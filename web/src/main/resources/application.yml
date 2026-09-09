@@ -1,0 +1,21 @@
+server:
+  # 0.0.0.0 — сервер виден и с самого компьютера, и с телефона в той же сети Wi-Fi
+  address: 0.0.0.0
+  port: 8090
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,application/javascript,application/json
+    min-response-size: 1024
+
+spring:
+  application:
+    name: bellman-climb-calculator
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          no-cache: true
+
+logging:
+  level:
+    root: INFO
