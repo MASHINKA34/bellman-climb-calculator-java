@@ -233,7 +233,7 @@ public class BellmanSolver {
         if (targetMach != null) {
             notes.add(String.format(
                     "Конец набора закреплён за числом Маха M = %.3f ± %.3f: "
-                            + "подходящих узлов на крейсерской высоте — %d.",
+                            + "подходящих узлов на крейсерской высоте - %d.",
                     targetMach, task.getCruiseMachTolerance(), allowed));
         }
     }
@@ -417,7 +417,7 @@ public class BellmanSolver {
             int nextIndex = policy[k][index];
             if (nextIndex < 0) {
                 throw new ClimbCalculationException(String.format(
-                        "Оптимальное управление не определено на высоте %.0f м — "
+                        "Оптимальное управление не определено на высоте %.0f м - "
                                 + "траектория обрывается. Проверьте исходные данные.",
                         altitudes[k]));
             }

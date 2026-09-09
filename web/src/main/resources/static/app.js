@@ -24,15 +24,15 @@ const GRID_FIELDS = [
 const AIRCRAFT_FIELDS = [
     {key: 'mass', label: 'Полётная масса', unit: 'кг', step: 500, min: 500},
     {key: 'wingArea', label: 'Площадь крыла', unit: 'м²', step: 0.1, min: 0.1},
-    {key: 'cx0', label: 'Cx0 — сопротивление при нулевой подъёмной силе', unit: '', step: 0.001, min: 0.001},
-    {key: 'inducedDragFactor', label: 'A — отвал поляры', unit: '', step: 0.001, min: 0.001},
+    {key: 'cx0', label: 'Cx0 - сопротивление при нулевой подъёмной силе', unit: '', step: 0.001, min: 0.001},
+    {key: 'inducedDragFactor', label: 'A - отвал поляры', unit: '', step: 0.001, min: 0.001},
     {key: 'cyMax', label: 'Cy max', unit: '', step: 0.05, min: 0.1},
     {key: 'stallMargin', label: 'Запас по скорости сваливания', unit: '', step: 0.05, min: 1},
     {key: 'thrustSeaLevel', label: 'Тяга у земли, все двигатели', unit: 'Н', step: 5000, min: 5000},
-    {key: 'thrustAltitudeExponent', label: 'n — падение тяги по высоте', unit: '', step: 0.05, min: 0.05},
-    {key: 'thrustMachFactor', label: 'k_M — падение тяги по числу Маха', unit: '', step: 0.05, min: 0},
-    {key: 'sfcSeaLevel', label: 'Ce₀ — удельный расход у земли', unit: 'кг/(Н·ч)', step: 0.001, min: 0.001},
-    {key: 'sfcMachFactor', label: 'k_Ce — рост расхода по числу Маха', unit: '', step: 0.05, min: 0},
+    {key: 'thrustAltitudeExponent', label: 'n - падение тяги по высоте', unit: '', step: 0.05, min: 0.05},
+    {key: 'thrustMachFactor', label: 'k_M - падение тяги по числу Маха', unit: '', step: 0.05, min: 0},
+    {key: 'sfcSeaLevel', label: 'Ce₀ - удельный расход у земли', unit: 'кг/(Н·ч)', step: 0.001, min: 0.001},
+    {key: 'sfcMachFactor', label: 'k_Ce - рост расхода по числу Маха', unit: '', step: 0.05, min: 0},
     {key: 'maxMach', label: 'Максимальное число Маха', unit: '', step: 0.01, min: 0.05},
     {key: 'maxIndicatedSpeed', label: 'Макс. приборная скорость', unit: 'м/с', step: 5, min: 5}
 ];
@@ -65,7 +65,7 @@ function escapeHtml(value) {
 
 function fmt(value, digits) {
     if (value === null || value === undefined || !isFinite(value)) {
-        return '—';
+        return '-';
     }
     const d = digits === undefined ? 1 : digits;
     return value.toLocaleString('ru-RU', {minimumFractionDigits: d, maximumFractionDigits: d});
@@ -480,12 +480,12 @@ function trajectoryTable(result) {
             + '<td>' + fmt(p.speed, 0) + '</td>'
             + '<td>' + fmt(p.mach, 3) + '</td>'
             + '<td>' + fmt(p.indicatedSpeed, 0) + '</td>'
-            + '<td>' + (p.step === 0 ? '—' : fmt(p.rateOfClimb, 2)) + '</td>'
+            + '<td>' + (p.step === 0 ? '-' : fmt(p.rateOfClimb, 2)) + '</td>'
             + '<td>' + fmt(p.liftCoefficient, 3) + '</td>'
             + '<td>' + fmt(p.thrust / 1000, 1) + '</td>'
             + '<td>' + fmt(p.drag / 1000, 1) + '</td>'
-            + '<td>' + (p.step === 0 ? '—' : fmt(p.segmentTime, 1)) + '</td>'
-            + '<td>' + (p.step === 0 ? '—' : fmt(p.segmentFuel, 1)) + '</td>'
+            + '<td>' + (p.step === 0 ? '-' : fmt(p.segmentTime, 1)) + '</td>'
+            + '<td>' + (p.step === 0 ? '-' : fmt(p.segmentFuel, 1)) + '</td>'
             + '<td>' + fmt(p.time / 60, 2) + '</td>'
             + '<td>' + fmt(p.fuel, 1) + '</td>'
             + '<td>' + fmt(p.distance / 1000, 1) + '</td>'
@@ -526,7 +526,7 @@ function valueFunctionTable(result) {
         for (let i = 0; i < speeds.length; i++) {
             const value = result.valueFunction[k][i];
             if (value === null) {
-                rows += '<td class="dead">—</td>';
+                rows += '<td class="dead">-</td>';
             } else {
                 const intensity = maxValue > 0 ? value / maxValue : 0;
                 const marked = onPath[k + ':' + i] ? ' path' : '';
@@ -599,9 +599,9 @@ function renderResult(result) {
             ? '    <details class="section">'
             + '      <summary>Функция Беллмана по всем узлам сетки</summary>'
             + '      <div class="details-body">'
-            + '        <p class="chart-hint">f(H, V) — минимальные затраты на путь от узла до '
+            + '        <p class="chart-hint">f(H, V) - минимальные затраты на путь от узла до '
             + 'крейсерской высоты, ' + escapeHtml(result.criterionUnit)
-            + '. Обведены узлы оптимальной траектории, прочерк — состояние, '
+            + '. Обведены узлы оптимальной траектории, прочерк - состояние, '
             + 'из которого крейсерская высота недостижима.</p>'
             + valueFunctionTable(result)
             + '      </div>'
@@ -612,7 +612,7 @@ function renderResult(result) {
         + plural(result.altitudes.length, 'высотный уровень', 'высотных уровня', 'высотных уровней')
         + ' × ' + result.speeds.length + ' '
         + plural(result.speeds.length, 'скорость', 'скорости', 'скоростей')
-        + ', допустимых узлов — ' + result.feasibleNodes
+        + ', допустимых узлов - ' + result.feasibleNodes
         + '. Просмотрено переходов: ' + result.evaluatedTransitions.toLocaleString('ru-RU')
         + '. Время счёта: ' + result.solveTimeMillis + ' мс.'
         + '</div>'
