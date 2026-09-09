@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#1f6feb">
+    <meta name="description"
+          content="Расчёт оптимальной программы набора крейсерской высоты методом динамического программирования Р. Беллмана">
+    <title>Набор крейсерской высоты — метод Беллмана</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>✈</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page">
+    <header class="masthead">
+        <h1>Набор крейсерской высоты</h1>
+        <p>Оптимальная программа набора методом динамического программирования Р. Беллмана</p>
+    </header>
+
+    <div class="layout">
+        <form class="card panel-form" id="form" novalidate>
+            <h2>Исходные данные</h2>
+            <div class="card-body">
+                <fieldset id="fs-task">
+                    <legend>Условия набора</legend>
+                </fieldset>
+
+                <fieldset id="fs-grid">
+                    <legend>Сетка состояний и ограничения</legend>
+                </fieldset>
+
+                <details class="aircraft" id="aircraft-block">
+                    <summary>Характеристики самолёта</summary>
+                    <div class="details-body" id="fs-aircraft"></div>
+                </details>
+
+                <div class="actions">
+                    <button type="submit" class="btn-primary" id="btn-solve">Рассчитать</button>
+                    <button type="button" class="btn-ghost" id="btn-reset">Сброс</button>
+                </div>
+            </div>
+        </form>
+
+        <main id="results">
+            <div class="card">
+                <div class="placeholder">Задайте исходные данные и нажмите «Рассчитать»</div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

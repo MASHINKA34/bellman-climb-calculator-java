@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bellman-web",
+      "runtimeExecutable": "mvn",
+      "runtimeArgs": ["-B", "-pl", "web", "spring-boot:run"],
+      "port": 8090
+    }
+  ]
+}
