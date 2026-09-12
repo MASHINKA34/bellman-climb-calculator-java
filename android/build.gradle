@@ -1,0 +1,5 @@
+// Корневой файл сборки Android-приложения.
+// Собственно модуль один — :app, всё остальное берётся из core и web.
+plugins {
+    id 'com.android.application' version '8.7.3' apply false
+}
