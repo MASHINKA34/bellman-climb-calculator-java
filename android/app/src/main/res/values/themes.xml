@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Светлая тема. Парная тёмная лежит в values-night: по ней WebView понимает,
+        что системная тема тёмная, и стили страницы переключаются на свою тёмную
+        палитру через prefers-color-scheme.
+
+        Цвет окна совпадает с фоном страницы (переменная bg в styles.css): под
+        системными панелями видно именно его, и стык не должен быть заметен.
+    -->
+    <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#F4F6F8</item>
+        <item name="android:statusBarColor">#F4F6F8</item>
+        <item name="android:navigationBarColor">#F4F6F8</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>
