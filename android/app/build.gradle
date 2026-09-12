@@ -1,0 +1,75 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'ru.mashinka.bellman.android'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'ru.mashinka.bellman.android'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            // Ядро подключается напрямую из модуля core — это те же самые файлы,
+            // из которых собирается веб-версия, а не их копия. Ради этого core
+            // и написан на чистой Java 17 без единой внешней зависимости.
+            java.srcDirs += '../../core/src/main/java'
+
+            // Сюда задача copyWebAssets кладёт страницу, стили и скрипты из web.
+            assets.srcDirs += 'build/generated/webAssets'
+        }
+    }
+
+    buildTypes {
+        debug {
+            // Отладочная сборка ставится на телефон без подписи ключом разработчика.
+            applicationIdSuffix ''
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                    'proguard-rules.pro'
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Интерфейс тоже переиспользуется целиком: html, стили и скрипты копируются
+// из веб-модуля. В index.html подставляется единственная лишняя строка —
+// подключение моста, который подменяет обращения к серверу вызовами Java.
+// ---------------------------------------------------------------------------
+
+def webStatic = rootProject.file('../web/src/main/resources/static')
+
+tasks.register('copyWebAssets', Copy) {
+    description = 'Копирует интерфейс веб-версии в assets приложения'
+
+    from(webStatic) {
+        exclude 'index.html'
+    }
+    from(webStatic) {
+        include 'index.html'
+        filter { String line ->
+            line.contains('src="app.js"')
+                    ? '<script src="android-bridge.js"></script>' +
+                      System.lineSeparator() + line
+                    : line
+        }
+    }
+    into layout.buildDirectory.dir('generated/webAssets')
+}
+
+tasks.named('preBuild') {
+    dependsOn 'copyWebAssets'
+}
