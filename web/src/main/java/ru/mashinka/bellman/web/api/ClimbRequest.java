@@ -3,10 +3,8 @@ package ru.mashinka.bellman.web.api;
 import ru.mashinka.bellman.core.model.Aircraft;
 import ru.mashinka.bellman.core.model.ClimbTask;
 
-/**
- * Тело запроса на расчёт: данные самолёта и условия задачи.
- * Отсутствующий раздел заменяется значениями по умолчанию.
- */
+// тело запроса на расчёт: данные самолёта и условия задачи
+// Отсутствующий раздел заменяется значениями по умолчанию.
 public class ClimbRequest {
 
     private Aircraft aircraft = Aircraft.defaultAirliner();

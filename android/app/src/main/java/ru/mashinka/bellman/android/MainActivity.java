@@ -12,20 +12,14 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 
-/**
- * Единственный экран приложения: WebView, в котором открыта та же страница,
- * что и на сайте.
- *
- * <p>Разница с веб-версией ровно одна — вместо запросов к серверу страница
- * зовёт {@link ClimbBridge}, а тот считает прямо на телефоне. Поэтому
- * приложение работает без интернета.
- */
+// единственный экран: WebView с той же страницей, что и на сайте
+// вместо запросов к серверу страница зовёт ClimbBridge, поэтому работает без интернета
 public class MainActivity extends Activity {
 
     private FrameLayout root;
     private WebView webView;
 
-    /** Последние применённые отступы под системные панели, чтобы не дёргать разметку зря. */
+    // последние применённые отступы под системные панели, чтобы не дёргать разметку зря
     private int[] appliedInsets = new int[]{-1, -1, -1, -1};
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -62,15 +56,9 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/index.html");
     }
 
-    /**
-     * Android 15 растягивает приложение под системные панели, и без отступов
-     * заголовок уезжает под часы, а графики — под кнопки навигации.
-     *
-     * <p>Отступы берутся из {@code getRootWindowInsets()} на каждой перекомпоновке,
-     * а не через слушатель инсетов: слушателю они могут не дойти, если их перехватит
-     * корневое окно, а корневые инсеты доступны всегда. Заодно так учитывается
-     * клавиатура — поля ввода не прячутся под неё.
-     */
+    // android 15 кладёт приложение под системные панели, без отступов заголовок
+    // уезжает под часы. берём getRootWindowInsets на каждой перекомпоновке:
+    // до слушателя инсеты могут не дойти, а корневые доступны всегда
     private void watchSystemBarInsets() {
         root.getViewTreeObserver().addOnGlobalLayoutListener(
                 new ViewTreeObserver.OnGlobalLayoutListener() {

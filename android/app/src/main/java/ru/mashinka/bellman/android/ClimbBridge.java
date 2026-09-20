@@ -11,23 +11,15 @@ import ru.mashinka.bellman.core.dp.ClimbSolution;
 import ru.mashinka.bellman.core.model.Aircraft;
 import ru.mashinka.bellman.core.model.ClimbTask;
 
-/**
- * Мост между страницей в WebView и расчётным ядром.
- *
- * <p>Заменяет собой REST-контроллер веб-версии: JavaScript вызывает эти методы
- * напрямую, {@link BellmanSolver} считает здесь же, на телефоне, сеть не нужна.
- * Формат ответа повторяет ответ сервера — благодаря этому файл {@code app.js}
- * на телефоне и на сайте один и тот же.
- *
- * <p>Коды ошибок тоже сохранены: 400 — виноват ввод, 422 — ввод корректен,
- * но решения не существует.
- */
+// мост между страницей в WebView и ядром, вместо REST-контроллера
+// формат ответа тот же, что у сервера, поэтому app.js общий с сайтом
+// коды: 400 - кривой ввод, 422 - решения не существует
 public class ClimbBridge {
 
-    /** Имя, под которым мост виден из JavaScript. */
+    // имя, под которым мост виден из JavaScript
     static final String NAME = "BellmanBridge";
 
-    /** Исходные данные по умолчанию — ими заполняется форма при запуске. */
+    // исходные данные по умолчанию — ими заполняется форма при запуске
     @JavascriptInterface
     public String defaults() {
         try {
@@ -38,7 +30,7 @@ public class ClimbBridge {
         }
     }
 
-    /** Расчёт оптимального набора крейсерской высоты. */
+    // расчёт оптимального набора крейсерской высоты
     @JavascriptInterface
     public String climb(String requestJson) {
         try {
@@ -58,7 +50,7 @@ public class ClimbBridge {
         }
     }
 
-    /** Ответ в том же виде, в каком его отдаёт сервер веб-версии. */
+    // ответ в том же виде, в каком его отдаёт сервер веб-версии
     private static String envelope(boolean ok, int status, JSONObject body) throws JSONException {
         JSONObject envelope = new JSONObject();
         envelope.put("ok", ok);
@@ -67,10 +59,8 @@ public class ClimbBridge {
         return envelope.toString();
     }
 
-    /**
-     * Сообщение об ошибке. Собирается вручную, без JSONObject: сюда попадают
-     * в том числе сбои самой сериализации, и падать второй раз здесь нельзя.
-     */
+    // сообщение об ошибке. Собирается вручную, без JSONObject: сюда попадают
+    // в том числе сбои самой сериализации, и падать второй раз здесь нельзя.
     private static String failure(int status, String title, Throwable cause) {
         String detail = cause.getMessage() != null
                 ? cause.getMessage()

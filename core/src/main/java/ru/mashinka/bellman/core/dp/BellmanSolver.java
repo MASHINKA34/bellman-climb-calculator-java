@@ -9,37 +9,19 @@ import ru.mashinka.bellman.core.model.ClimbTask;
 import ru.mashinka.bellman.core.model.Criterion;
 import ru.mashinka.bellman.core.perf.FlightPerformance;
 
-/**
- * Решение задачи о наборе крейсерской высоты методом динамического программирования Р. Беллмана.
- *
- * <h2>Постановка</h2>
- * Пространство состояний дискретизируется сеткой (H, V): высотные уровни
- * H₀, H₁, ..., H_N от начальной высоты до крейсерской и набор истинных скоростей
- * V₀, V₁, ..., V_{M−1}. Этап k — переход с уровня H_k на уровень H_{k+1},
- * управление — выбор скорости на следующем уровне.
- *
- * <h2>Стоимость перехода</h2>
- * Используется энергетический метод. Энергетическая высота Hэ = H + V²/(2g)
- * растёт со скоростью dHэ/dt = V·(P − Q)/(m·g). Время перехода находится
- * интегрированием dt = dHэ / (dHэ/dt) по правилу трапеций,
- * расход топлива — как средний секундный расход, умноженный на время.
- *
- * <h2>Уравнение Беллмана</h2>
- * <pre>
- *     f_N(i) = 0                                            (крейсерская высота достигнута)
- *     f_k(i) = min over j [ c_k(i, j) + f_{k+1}(j) ]        k = N−1, ..., 0
- * </pre>
- * Обратная (от конца к началу) прогонка даёт функцию Беллмана f и оптимальное
- * управление; прямой проход по запомненным управлениям восстанавливает
- * оптимальную траекторию набора.
- */
+// алгоритм Беллмана для набора крейсерской высоты
+// состояние - узел сетки (H, V), этап - переход на следующий уровень,
+// управление - выбор скорости на нём
+//
+// f_N(i) = 0
+// f_k(i) = min по j [ c(i,j) + f_k+1(j) ],  k = N-1 ... 0
 public class BellmanSolver {
 
-    /** Предельное число высотных уровней — защита от неподъёмной по времени сетки. */
+    // предельное число высотных уровней — защита от неподъёмной по времени сетки
     private static final int MAX_LEVELS = 400;
-    /** Предельное число узлов по скорости. */
+    // предельное число узлов по скорости
     private static final int MAX_SPEEDS = 800;
-    /** Предельное число просматриваемых переходов. */
+    // предельное число просматриваемых переходов
     private static final long MAX_TRANSITIONS = 50_000_000L;
 
     private final Aircraft aircraft;
@@ -56,12 +38,7 @@ public class BellmanSolver {
         return performance;
     }
 
-    /**
-     * Выполняет расчёт.
-     *
-     * @throws IllegalArgumentException при некорректных исходных данных
-     * @throws ClimbCalculationException если набор крейсерской высоты невозможен
-     */
+    // выполняет расчёт
     public ClimbSolution solve() {
         aircraft.validate();
         task.validate();
@@ -124,7 +101,7 @@ public class BellmanSolver {
 
     // ------------------------------------------------------------------ сетка
 
-    /** Высотные уровни: равномерный шаг, последний уровень точно равен крейсерской высоте. */
+    // высотные уровни: равномерный шаг, последний уровень точно равен крейсерской высоте
     private double[] buildAltitudeLevels() {
         double span = task.getCruiseAltitude() - task.getStartAltitude();
         int steps = (int) Math.ceil(span / task.getAltitudeStep() - 1e-9);
@@ -136,7 +113,7 @@ public class BellmanSolver {
         return altitudes;
     }
 
-    /** Равномерная сетка истинных скоростей. */
+    // равномерная сетка истинных скоростей
     private double[] buildSpeedGrid() {
         int count = (int) Math.floor((task.getSpeedMax() - task.getSpeedMin())
                 / task.getSpeedStep() + 1e-9) + 1;
@@ -165,7 +142,7 @@ public class BellmanSolver {
         }
     }
 
-    /** Узел допустим, если скорость лежит между минимально и максимально допустимой на этой высоте. */
+    // узел допустим, если скорость лежит между минимально и максимально допустимой на этой высоте
     private boolean[][] buildFeasibilityMask(double[] altitudes, double[] speeds) {
         boolean[][] feasible = new boolean[altitudes.length][speeds.length];
         for (int k = 0; k < altitudes.length; k++) {
@@ -192,10 +169,8 @@ public class BellmanSolver {
 
     // ------------------------------------------------------- уравнение Беллмана
 
-    /**
-     * Граничное условие обратной прогонки: на крейсерской высоте затраты равны нулю.
-     * Если задано крейсерское число Маха, допускаются только соответствующие ему узлы.
-     */
+    // граничное условие обратной прогонки: на крейсерской высоте затраты равны нулю
+    // Если задано крейсерское число Маха, допускаются только соответствующие ему узлы.
     private void initTerminalLevel(double[][] valueFunction, boolean[][] feasible,
                                    double[] altitudes, double[] speeds, List<String> notes) {
         int last = altitudes.length - 1;
@@ -238,13 +213,9 @@ public class BellmanSolver {
         }
     }
 
-    /**
-     * Обратная прогонка: f_k(i) = min_j [ c_k(i, j) + f_{k+1}(j) ].
-     * Попутно запоминается оптимальное управление policy[k][i] — номер скорости
-     * на следующем уровне.
-     *
-     * @return число просмотренных переходов
-     */
+    // обратная прогонка: f_k(i) = min_j [ c_k(i, j) + f_{k+1}(j) ]
+    // Попутно запоминается оптимальное управление policy[k][i] — номер скорости
+    // на следующем уровне.
     private long runBackwardRecursion(double[] altitudes, double[] speeds, boolean[][] feasible,
                                       double[][] valueFunction, int[][] policy) {
         long evaluated = 0;
@@ -290,21 +261,15 @@ public class BellmanSolver {
         return evaluated;
     }
 
-    /**
-     * Стоимость перехода из состояния (h1, v1) в состояние (h2, v2) в выбранном
-     * критерии оптимальности — величина c_k(i, j) из уравнения Беллмана.
-     *
-     * @return стоимость перехода либо {@code null}, если переход невозможен
-     */
+    // стоимость перехода из состояния (h1, v1) в состояние (h2, v2) в выбранном
+    // критерии оптимальности — величина c_k(i, j) из уравнения Беллмана.
     public Double transitionCost(double h1, double v1, double h2, double v2) {
         Segment segment = buildSegment(h1, v1, h2, v2);
         return segment == null ? null : cost(segment);
     }
 
-    /**
-     * Параметры перехода из состояния (h1, v1) в состояние (h2, v2)
-     * или {@code null}, если такой переход физически невозможен.
-     */
+    // параметры перехода из состояния (h1, v1) в состояние (h2, v2)
+    // или null, если такой переход физически невозможен.
     private Segment buildSegment(double h1, double v1, double h2, double v2) {
         double energy1 = h1 + v1 * v1 / (2.0 * Atmosphere.G);
         double energy2 = h2 + v2 * v2 / (2.0 * Atmosphere.G);
@@ -342,7 +307,7 @@ public class BellmanSolver {
         return new Segment(time, fuel, distance, rateOfClimb);
     }
 
-    /** Стоимость перехода в выбранном критерии оптимальности. */
+    // стоимость перехода в выбранном критерии оптимальности
     private double cost(Segment segment) {
         Criterion criterion = task.getCriterion();
         if (criterion == Criterion.TIME) {
@@ -356,10 +321,8 @@ public class BellmanSolver {
 
     // ------------------------------------------------ восстановление траектории
 
-    /**
-     * Номер узла сетки, соответствующего начальной скорости. Если из него набор
-     * невозможен, берётся ближайший узел, из которого решение существует.
-     */
+    // номер узла сетки, соответствующего начальной скорости. Если из него набор
+    // невозможен, берётся ближайший узел, из которого решение существует.
     private int resolveStartIndex(double[] speeds, double[] valueAtStart, List<String> notes) {
         int nearest = (int) Math.round((task.getStartSpeed() - task.getSpeedMin())
                 / task.getSpeedStep());
@@ -400,7 +363,7 @@ public class BellmanSolver {
         return fallback;
     }
 
-    /** Прямой проход по оптимальному управлению — та самая оптимальная траектория. */
+    // прямой проход по оптимальному управлению — та самая оптимальная траектория
     private List<TrajectoryPoint> restoreTrajectory(double[] altitudes, double[] speeds,
                                                     int[][] policy, int startIndex) {
         List<TrajectoryPoint> trajectory = new ArrayList<>();
@@ -469,7 +432,7 @@ public class BellmanSolver {
                 distance);
     }
 
-    /** Параметры одного перехода между узлами сетки. */
+    // параметры одного перехода между узлами сетки
     private static final class Segment {
         private final double time;
         private final double fuel;

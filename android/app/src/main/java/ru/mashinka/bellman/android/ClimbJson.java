@@ -13,17 +13,12 @@ import ru.mashinka.bellman.core.model.Aircraft;
 import ru.mashinka.bellman.core.model.ClimbTask;
 import ru.mashinka.bellman.core.model.Criterion;
 
-/**
- * Перевод между JSON страницы и объектами ядра.
- *
- * <p>На сервере этим занимается Jackson, здесь — встроенный в Android
- * {@code org.json}: так у приложения не появляется ни одной внешней
- * зависимости. Имена полей в точности повторяют ответ веб-версии
- * ({@code ClimbResponse}), иначе страница их не поймёт.
- */
+// JSON страницы в объекты ядра и обратно
+// на сервере это делает Jackson, тут встроенный в Android org.json - без зависимостей
+// имена полей должны совпадать с ClimbResponse, иначе страница не поймёт
 final class ClimbJson {
 
-    /** Предел числа узлов, при котором таблица функции Беллмана ещё передаётся странице. */
+    // предел числа узлов, при котором таблица функции Беллмана ещё передаётся странице
     private static final int MAX_MATRIX_NODES = 6000;
 
     private ClimbJson() {
@@ -31,7 +26,7 @@ final class ClimbJson {
 
     // ------------------------------------------------------------ чтение запроса
 
-    /** Данные самолёта из JSON; отсутствующие поля остаются значениями по умолчанию. */
+    // данные самолёта из JSON; отсутствующие поля остаются значениями по умолчанию
     static Aircraft readAircraft(JSONObject json) {
         Aircraft aircraft = Aircraft.defaultAirliner();
         if (json == null) {
@@ -58,7 +53,7 @@ final class ClimbJson {
         return aircraft;
     }
 
-    /** Условия задачи из JSON. */
+    // условия задачи из JSON
     static ClimbTask readTask(JSONObject json) {
         ClimbTask task = ClimbTask.defaultTask();
         if (json == null) {
@@ -98,7 +93,7 @@ final class ClimbJson {
 
     // ------------------------------------------------------------ запись ответа
 
-    /** Исходные данные в том виде, в каком их отдаёт {@code GET /api/defaults}. */
+    // исходные данные в том виде, в каком их отдаёт GET /api/defaults
     static JSONObject request(Aircraft aircraft, ClimbTask task) throws JSONException {
         JSONObject json = new JSONObject();
         json.put("aircraft", aircraft(aircraft));
@@ -145,7 +140,7 @@ final class ClimbJson {
         return json;
     }
 
-    /** Результат расчёта в том виде, в каком его отдаёт {@code POST /api/climb}. */
+    // результат расчёта в том виде, в каком его отдаёт POST /api/climb
     static JSONObject solution(ClimbSolution solution) throws JSONException {
         JSONObject json = new JSONObject();
         json.put("criterion", solution.getCriterion().name());
@@ -219,11 +214,9 @@ final class ClimbJson {
         return array;
     }
 
-    /**
-     * Функция Беллмана. Бесконечность нельзя записать в корректный JSON,
-     * поэтому недостижимые состояния становятся null — это и есть прочерки
-     * в таблице на странице.
-     */
+    // функция Беллмана. Бесконечность нельзя записать в корректный JSON,
+    // поэтому недостижимые состояния становятся null — это и есть прочерки
+    // в таблице на странице.
     private static JSONArray valueFunction(double[][] matrix) throws JSONException {
         JSONArray rows = new JSONArray();
         for (double[] row : matrix) {
