@@ -1,12 +1,7 @@
 package ru.mashinka.bellman.core.dp;
 
-/**
- * Точка оптимальной траектории набора высоты — один узел сетки,
- * попавший в найденное алгоритмом Беллмана решение.
- *
- * <p>Величины с приставкой «segment» относятся к участку, приведшему в эту точку
- * из предыдущей; для начальной точки они равны нулю.
- */
+// точка оптимальной траектории - узел сетки, попавший в решение
+// поля segment* относятся к участку, приведшему в эту точку; в начальной точке нули
 public class TrajectoryPoint {
 
     private final int step;
@@ -58,97 +53,97 @@ public class TrajectoryPoint {
         this.distance = distance;
     }
 
-    /** Номер высотного уровня (этапа) k. */
+    // номер высотного уровня (этапа) k
     public int getStep() {
         return step;
     }
 
-    /** Высота H, м. */
+    // высота H, м
     public double getAltitude() {
         return altitude;
     }
 
-    /** Истинная скорость V, м/с. */
+    // истинная скорость V, м/с
     public double getSpeed() {
         return speed;
     }
 
-    /** Число Маха. */
+    // число Маха
     public double getMach() {
         return mach;
     }
 
-    /** Приборная (индикаторная) скорость, м/с. */
+    // приборная (индикаторная) скорость, м/с
     public double getIndicatedSpeed() {
         return indicatedSpeed;
     }
 
-    /** Энергетическая высота Hэ = H + V²/(2g), м. */
+    // энергетическая высота Hэ = H + V²/(2g), м
     public double getEnergyAltitude() {
         return energyAltitude;
     }
 
-    /** Коэффициент подъёмной силы Cy. */
+    // коэффициент подъёмной силы Cy
     public double getLiftCoefficient() {
         return liftCoefficient;
     }
 
-    /** Располагаемая тяга P, Н. */
+    // располагаемая тяга P, Н
     public double getThrust() {
         return thrust;
     }
 
-    /** Лобовое сопротивление Q, Н. */
+    // лобовое сопротивление Q, Н
     public double getDrag() {
         return drag;
     }
 
-    /** Избыток тяги ΔP = P − Q, Н. */
+    // избыток тяги ΔP = P − Q, Н
     public double getExcessThrust() {
         return excessThrust;
     }
 
-    /** Секундный расход топлива, кг/с. */
+    // секундный расход топлива, кг/с
     public double getFuelFlow() {
         return fuelFlow;
     }
 
-    /** Энергетическая скороподъёмность dHэ/dt, м/с. */
+    // энергетическая скороподъёмность dHэ/dt, м/с
     public double getEnergyRate() {
         return energyRate;
     }
 
-    /** Вертикальная скорость Vy на участке, приведшем в точку, м/с. */
+    // вертикальная скорость Vy на участке, приведшем в точку, м/с
     public double getRateOfClimb() {
         return rateOfClimb;
     }
 
-    /** Время прохождения участка, с. */
+    // время прохождения участка, с
     public double getSegmentTime() {
         return segmentTime;
     }
 
-    /** Расход топлива на участке, кг. */
+    // расход топлива на участке, кг
     public double getSegmentFuel() {
         return segmentFuel;
     }
 
-    /** Горизонтальная дальность участка, м. */
+    // горизонтальная дальность участка, м
     public double getSegmentDistance() {
         return segmentDistance;
     }
 
-    /** Время от начала набора, с. */
+    // время от начала набора, с
     public double getTime() {
         return time;
     }
 
-    /** Израсходованное от начала набора топливо, кг. */
+    // израсходованное от начала набора топливо, кг
     public double getFuel() {
         return fuel;
     }
 
-    /** Пройденная от начала набора горизонтальная дальность, м. */
+    // пройденная от начала набора горизонтальная дальность, м
     public double getDistance() {
         return distance;
     }

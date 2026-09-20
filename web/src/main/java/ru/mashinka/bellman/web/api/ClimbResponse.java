@@ -6,17 +6,12 @@ import java.util.List;
 import ru.mashinka.bellman.core.dp.ClimbSolution;
 import ru.mashinka.bellman.core.dp.TrajectoryPoint;
 
-/**
- * Ответ на запрос расчёта.
- *
- * <p>Функция Беллмана переносится в {@code Double[][]}, где {@code null} означает
- * недостижимое состояние: бесконечность нельзя записать в корректный JSON.
- * На очень подробных сетках таблица не передаётся целиком — иначе ответ разрастается
- * до сотен килобайт, а браузер телефона не справляется с её отрисовкой.
- */
+// ответ на запрос расчёта
+// бесконечность в JSON не запишешь, поэтому f переносится в Double[][] с null
+// на подробных сетках таблицу не отдаём - ответ весил бы сотни килобайт
 public class ClimbResponse {
 
-    /** Предел числа узлов, при котором таблица функции Беллмана ещё передаётся клиенту. */
+    // предел числа узлов, при котором таблица функции Беллмана ещё передаётся клиенту
     private static final int MAX_MATRIX_NODES = 6000;
 
     private String criterion;
@@ -41,7 +36,7 @@ public class ClimbResponse {
 
     private List<String> notes;
 
-    /** Преобразует результат расчёта ядра в пригодный для JSON ответ. */
+    // преобразует результат расчёта ядра в пригодный для JSON ответ
     public static ClimbResponse from(ClimbSolution solution) {
         ClimbResponse response = new ClimbResponse();
         response.criterion = solution.getCriterion().name();
