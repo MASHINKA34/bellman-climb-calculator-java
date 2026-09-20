@@ -70,6 +70,12 @@ public class ClimbResponse {
         return response;
     }
 
+    // примитивный double[][] в объектный Double[][]
+    //
+    // это нужно ровно из-за одного: в JSON нет бесконечности. Infinity - не число
+    // по стандарту JSON, и такой ответ браузер не разберёт. а примитив double
+    // не умеет быть null, поэтому и берём обёртку Double: недостижимые узлы
+    // становятся null и превращаются в прочерки в таблице на странице
     private static Double[][] toNullableMatrix(double[][] source) {
         Double[][] result = new Double[source.length][];
         for (int k = 0; k < source.length; k++) {

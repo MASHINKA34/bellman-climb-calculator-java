@@ -59,6 +59,9 @@ public class Aircraft {
         require(maxIndicatedSpeed > 0, "максимальная приборная скорость должна быть больше нуля");
     }
 
+    // проверки выше читались бы как стена из if-throw, поэтому свёрнуты в require.
+    // тип исключения один на все - IllegalArgumentException: значит, виноват ввод,
+    // и веб-слой превратит это в ответ 400
     private static void require(boolean condition, String message) {
         if (!condition) {
             throw new IllegalArgumentException("Некорректные данные самолёта: " + message);

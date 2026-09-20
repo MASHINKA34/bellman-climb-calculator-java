@@ -33,14 +33,17 @@ public class ClimbController {
         return ClimbResponse.from(solver.solve());
     }
 
-    // исходные данные противоречивы — виновата форма, а не расчёт
+    // 400: виноват тот, кто прислал запрос. крейсерская ниже начальной, масса
+    // отрицательная - чинится правкой формы. повторять такой запрос бессмысленно
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleInvalidInput(IllegalArgumentException exception) {
         return new ApiError("Некорректные исходные данные", exception.getMessage());
     }
 
-    // данные корректны, но решения не существует
+    // 422: запрос правильный, сервер его понял - но ответа не существует.
+    // самолёт не вытягивает на заданную высоту. это не ошибка ввода,
+    // поэтому 400 тут был бы враньём, а 500 сваливал бы вину на сервер
     @ExceptionHandler(ClimbCalculationException.class)
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public ApiError handleUnsolvable(ClimbCalculationException exception) {
