@@ -6,6 +6,9 @@ import java.util.List;
 import ru.mashinka.bellman.core.model.Criterion;
 
 // результат расчёта: траектория, итоги набора и таблица функции Беллмана
+//
+// объект неизменяемый: все поля final, списки отдаются через unmodifiableList.
+// создать его может только BellmanSolver - конструктор пакетный, без модификатора
 public class ClimbSolution {
 
     private final Criterion criterion;

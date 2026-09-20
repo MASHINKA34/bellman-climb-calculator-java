@@ -27,6 +27,11 @@ public class FlightPerformance {
     public double thrust(double h, double v) {
         double sigma = Atmosphere.relativeDensity(h);
         double machFactor = 1.0 - aircraft.getThrustMachFactor() * mach(h, v);
+
+        // подпорка снизу. формула линейная, и на больших числах Маха множитель
+        // ушёл бы в ноль и минус - получилась бы отрицательная тяга, то есть
+        // двигатель, тянущий назад. в рабочем диапазоне это не срабатывает,
+        // но пользователь волен вписать любой k_M в форму
         if (machFactor < 0.1) {
             machFactor = 0.1;
         }
