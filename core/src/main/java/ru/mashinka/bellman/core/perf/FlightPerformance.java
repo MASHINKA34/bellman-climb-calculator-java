@@ -3,6 +3,9 @@ package ru.mashinka.bellman.core.perf;
 import ru.mashinka.bellman.core.atmosphere.Atmosphere;
 import ru.mashinka.bellman.core.model.Aircraft;
 
+//#композиция - класс не наследует Aircraft, а хранит ссылку на него внутри
+//#аэродинамика - поляра, тяга, расход: все формулы модели собраны тут
+//
 // ЛТХ в точке (H, V): тяга, сопротивление, расход, скороподъёмность, границы скоростей
 // масса в пределах одного расчёта постоянна
 public class FlightPerformance {
