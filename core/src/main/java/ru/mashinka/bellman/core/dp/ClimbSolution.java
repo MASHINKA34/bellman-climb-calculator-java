@@ -5,6 +5,9 @@ import java.util.List;
 
 import ru.mashinka.bellman.core.model.Criterion;
 
+//#неизменяемость - все поля final, объект нельзя испортить после создания
+//#дженерики - List<TrajectoryPoint>, типизированная коллекция
+//
 // результат расчёта: траектория, итоги набора и таблица функции Беллмана
 //
 // объект неизменяемый: все поля final, списки отдаются через unmodifiableList.

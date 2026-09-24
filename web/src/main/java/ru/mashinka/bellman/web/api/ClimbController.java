@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.mashinka.bellman.core.dp.BellmanSolver;
 import ru.mashinka.bellman.core.dp.ClimbCalculationException;
 
+//#rest - два эндпоинта, GET и POST
+//#аннотации - @RestController, @GetMapping, @PostMapping, @ExceptionHandler
+//#разделение - в этом файле НЕТ ни одной формулы, весь расчёт в модуле core
+//
 // REST-интерфейс калькулятора. Вся логика лежит в модуле core —
 // здесь только приём запроса, вызов решателя и обработка ошибок.
 @RestController
