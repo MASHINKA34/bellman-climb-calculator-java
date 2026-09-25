@@ -3,11 +3,8 @@ package ru.mashinka.bellman.core.perf;
 import ru.mashinka.bellman.core.atmosphere.Atmosphere;
 import ru.mashinka.bellman.core.model.Aircraft;
 
-//#композиция - класс не наследует Aircraft, а хранит ссылку на него внутри
-//#аэродинамика - поляра, тяга, расход: все формулы модели собраны тут
-//
-// ЛТХ в точке (H, V): тяга, сопротивление, расход, скороподъёмность, границы скоростей
-// масса в пределах одного расчёта постоянна
+// ЛТХ в точке (H, V): тяга, сопротивление, расход, границы скоростей
+//#композиция - не наследует Aircraft, а хранит ссылку на него
 public class FlightPerformance {
 
     private final Aircraft aircraft;
@@ -31,10 +28,7 @@ public class FlightPerformance {
         double sigma = Atmosphere.relativeDensity(h);
         double machFactor = 1.0 - aircraft.getThrustMachFactor() * mach(h, v);
 
-        // подпорка снизу. формула линейная, и на больших числах Маха множитель
-        // ушёл бы в ноль и минус - получилась бы отрицательная тяга, то есть
-        // двигатель, тянущий назад. в рабочем диапазоне это не срабатывает,
-        // но пользователь волен вписать любой k_M в форму
+        // чтобы тяга не ушла в минус на больших числах Маха
         if (machFactor < 0.1) {
             machFactor = 0.1;
         }
@@ -78,10 +72,7 @@ public class FlightPerformance {
         return thrust(h, v) - drag(h, v);
     }
 
-    // энергетическая скороподъёмность dHэ/dt = V·(P − Q)/(m·g), м/с
-    //
-    // Это ключевая величина энергетического метода: она показывает,
-    // с какой скоростью растёт энергетическая высота Hэ = H + V²/(2g).
+    // скорость роста энергетической высоты dHэ/dt = V·(P − Q)/(m·g), м/с
     public double energyRate(double h, double v) {
         return v * excessThrust(h, v) / (aircraft.getMass() * Atmosphere.G);
     }

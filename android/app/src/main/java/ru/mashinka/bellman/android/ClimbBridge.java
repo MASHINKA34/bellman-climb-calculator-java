@@ -11,9 +11,7 @@ import ru.mashinka.bellman.core.dp.ClimbSolution;
 import ru.mashinka.bellman.core.model.Aircraft;
 import ru.mashinka.bellman.core.model.ClimbTask;
 
-// мост между страницей в WebView и ядром, вместо REST-контроллера
-// формат ответа тот же, что у сервера, поэтому app.js общий с сайтом
-// коды: 400 - кривой ввод, 422 - решения не существует
+// мост между страницей и ядром, замена REST-контроллера на телефоне
 public class ClimbBridge {
 
     // имя, под которым мост виден из JavaScript

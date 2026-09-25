@@ -13,9 +13,7 @@ import ru.mashinka.bellman.core.model.Aircraft;
 import ru.mashinka.bellman.core.model.ClimbTask;
 import ru.mashinka.bellman.core.model.Criterion;
 
-// JSON страницы в объекты ядра и обратно
-// на сервере это делает Jackson, тут встроенный в Android org.json - без зависимостей
-// имена полей должны совпадать с ClimbResponse, иначе страница не поймёт
+// JSON в объекты ядра и обратно, на встроенном org.json вместо Jackson
 final class ClimbJson {
 
     // предел числа узлов, при котором таблица функции Беллмана ещё передаётся странице
@@ -214,9 +212,7 @@ final class ClimbJson {
         return array;
     }
 
-    // функция Беллмана. Бесконечность нельзя записать в корректный JSON,
-    // поэтому недостижимые состояния становятся null — это и есть прочерки
-    // в таблице на странице.
+    // бесконечности в JSON нет, поэтому недостижимые узлы пишем как null
     private static JSONArray valueFunction(double[][] matrix) throws JSONException {
         JSONArray rows = new JSONArray();
         for (double[] row : matrix) {
