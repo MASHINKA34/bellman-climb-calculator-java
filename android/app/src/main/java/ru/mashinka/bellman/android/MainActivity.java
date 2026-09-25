@@ -43,9 +43,7 @@ public class MainActivity extends Activity {
         settings.setSupportZoom(false);
         settings.setTextZoom(100);             // расчётные таблицы не должны разъезжаться
 
-        // WebView по умолчанию всегда сообщает светлую тему. Разрешаем следовать
-        // системной: стили страницы умеют тёмную тему сами, и WebView отдаст
-        // им предпочтение вместо принудительного затемнения.
+        // чтобы страница следовала тёмной теме телефона
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             settings.setAlgorithmicDarkeningAllowed(true);
         }
@@ -56,9 +54,7 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/index.html");
     }
 
-    // android 15 кладёт приложение под системные панели, без отступов заголовок
-    // уезжает под часы. берём getRootWindowInsets на каждой перекомпоновке:
-    // до слушателя инсеты могут не дойти, а корневые доступны всегда
+    // отступы под системные панели, иначе на android 15 страница уезжает под часы
     private void watchSystemBarInsets() {
         root.getViewTreeObserver().addOnGlobalLayoutListener(
                 new ViewTreeObserver.OnGlobalLayoutListener() {

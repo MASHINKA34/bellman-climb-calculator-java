@@ -13,12 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.mashinka.bellman.core.dp.BellmanSolver;
 import ru.mashinka.bellman.core.dp.ClimbCalculationException;
 
-//#rest - два эндпоинта, GET и POST
-//#аннотации - @RestController, @GetMapping, @PostMapping, @ExceptionHandler
-//#разделение - в этом файле НЕТ ни одной формулы, весь расчёт в модуле core
-//
-// REST-интерфейс калькулятора. Вся логика лежит в модуле core —
-// здесь только приём запроса, вызов решателя и обработка ошибок.
+//#rest - два эндпоинта: GET /api/defaults и POST /api/climb
+//#разделение - формул тут нет, весь расчёт в модуле core
 @RestController
 @RequestMapping(value = "/api", produces = MediaType.APPLICATION_JSON_VALUE)
 public class ClimbController {
@@ -37,17 +33,14 @@ public class ClimbController {
         return ClimbResponse.from(solver.solve());
     }
 
-    // 400: виноват тот, кто прислал запрос. крейсерская ниже начальной, масса
-    // отрицательная - чинится правкой формы. повторять такой запрос бессмысленно
+    // 400: кривой ввод, чинится правкой формы
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleInvalidInput(IllegalArgumentException exception) {
         return new ApiError("Некорректные исходные данные", exception.getMessage());
     }
 
-    // 422: запрос правильный, сервер его понял - но ответа не существует.
-    // самолёт не вытягивает на заданную высоту. это не ошибка ввода,
-    // поэтому 400 тут был бы враньём, а 500 сваливал бы вину на сервер
+    // 422: ввод нормальный, но решения нет - самолёт не вытягивает
     @ExceptionHandler(ClimbCalculationException.class)
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public ApiError handleUnsolvable(ClimbCalculationException exception) {

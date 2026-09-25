@@ -5,13 +5,9 @@ import java.util.List;
 
 import ru.mashinka.bellman.core.model.Criterion;
 
-//#неизменяемость - все поля final, объект нельзя испортить после создания
-//#дженерики - List<TrajectoryPoint>, типизированная коллекция
-//
-// результат расчёта: траектория, итоги набора и таблица функции Беллмана
-//
-// объект неизменяемый: все поля final, списки отдаются через unmodifiableList.
-// создать его может только BellmanSolver - конструктор пакетный, без модификатора
+// результат расчёта: траектория, итоги и таблица функции Беллмана
+//#неизменяемость - поля final, списки через unmodifiableList
+//#дженерики - List<TrajectoryPoint>
 public class ClimbSolution {
 
     private final Criterion criterion;
@@ -96,10 +92,7 @@ public class ClimbSolution {
         return speeds;
     }
 
-    // функция Беллмана f[k][i] — минимальные затраты на участок пути от узла
-    // (высота k, скорость i) до крейсерской высоты.
-    // Значение Double#POSITIVE_INFINITY означает, что из узла
-    // крейсерская высота недостижима.
+    // f[k][i] - затраты от узла до крейсерской высоты; бесконечность = недостижимо
     public double[][] getValueFunction() {
         return valueFunction;
     }
