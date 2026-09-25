@@ -206,6 +206,38 @@ class BellmanSolverTest {
                 "сообщение об ошибке не объясняет причину: " + error.getMessage());
     }
 
+    @Test
+    @DisplayName("Рекурсивный вариант даёт тот же ответ, что и итеративный")
+    void recursiveMatchesIterative() {
+        for (Criterion criterion : Criterion.values()) {
+            ClimbTask task = ClimbTask.defaultTask();
+            task.setCriterion(criterion);
+
+            ClimbSolution iterative =
+                    new BellmanSolver(Aircraft.defaultAirliner(), task).solve();
+            ClimbSolution recursive =
+                    new BellmanSolver(Aircraft.defaultAirliner(), task).solveRecursive();
+
+            assertEquals(iterative.getOptimalValue(), recursive.getOptimalValue(), 1e-9,
+                    "функция Беллмана разошлась при критерии " + criterion);
+            assertEquals(iterative.getTotalTime(), recursive.getTotalTime(), 1e-9,
+                    "время набора разошлось при критерии " + criterion);
+            assertEquals(iterative.getTotalFuel(), recursive.getTotalFuel(), 1e-9,
+                    "расход топлива разошёлся при критерии " + criterion);
+
+            // мало совпадения итогов - траектории обязаны совпасть точка в точку
+            List<TrajectoryPoint> byLoop = iterative.getTrajectory();
+            List<TrajectoryPoint> byRecursion = recursive.getTrajectory();
+            assertEquals(byLoop.size(), byRecursion.size());
+            for (int i = 0; i < byLoop.size(); i++) {
+                assertEquals(byLoop.get(i).getAltitude(), byRecursion.get(i).getAltitude(), 1e-9,
+                        "высота разошлась в точке " + i);
+                assertEquals(byLoop.get(i).getSpeed(), byRecursion.get(i).getSpeed(), 1e-9,
+                        "скорость разошлась в точке " + i);
+            }
+        }
+    }
+
     private static int indexOf(double[] values, double target) {
         for (int i = 0; i < values.length; i++) {
             if (Math.abs(values[i] - target) < 1e-9) {
