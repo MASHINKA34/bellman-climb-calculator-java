@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="description"
+          content="Многополюсный максимальный поток: дерево Гомори–Ху и потоки между всеми парами вершин сети">
+    <title>Многополюсный поток</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="android-bridge.js"></script>
+</head>
+<body>
+<div class="page">
+    <header class="masthead">
+        <h1>Многополюсный поток</h1>
+        <p>Максимальные потоки между всеми парами вершин — дерево Гомори–Ху</p>
+    </header>
+
+    <section class="card" id="input-card">
+        <h2>Сеть</h2>
+        <div class="card-body">
+            <div class="toolbar">
+                <div class="size-row">
+                    <label class="size-field" for="size">Число вершин</label>
+                    <select id="size"></select>
+                </div>
+                <div class="button-row">
+                    <button type="button" class="btn-ghost" id="btn-example">Пример</button>
+                    <button type="button" class="btn-ghost" id="btn-clear">Очистить</button>
+                </div>
+            </div>
+            <div class="undo" id="undo" hidden>
+                <span id="undo-text"></span>
+                <button type="button" class="btn-link" id="btn-undo">Вернуть как было</button>
+            </div>
+            <p class="hint">
+                Пропускные способности ветвей — целые числа от 0 до 1&nbsp;000&nbsp;000.
+                Пустая клетка — ветви нет. Матрица симметричная: c(i,&nbsp;j) = c(j,&nbsp;i),
+                вторая клетка заполняется сама.
+            </p>
+            <div class="matrix-scroll">
+                <table class="matrix" id="matrix"></table>
+            </div>
+            <div class="message error" id="input-message" role="alert" hidden></div>
+            <button type="button" class="btn-primary" id="btn-solve">Рассчитать</button>
+        </div>
+    </section>
+
+    <main id="results"></main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
