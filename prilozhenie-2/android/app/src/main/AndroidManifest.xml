@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        Разрешений здесь нет намеренно, даже на доступ в сеть: весь расчёт идёт
+        на телефоне, и приложение физически не может выйти в интернет.
+    -->
+
+    <application
+        android:name=".MultiFlowApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="false"
+        android:theme="@style/AppTheme">
+
+        <!--
+            Поворот экрана и клавиатура не пересоздают экран: введённая матрица и
+            результат остаются на месте. Смена тёмной темы пересоздаёт - так страница
+            получает новую палитру, а ввод восстанавливается из localStorage.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

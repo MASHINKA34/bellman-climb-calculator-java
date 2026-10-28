@@ -1,0 +1,5 @@
+// Корневой файл сборки Android-приложения.
+// Собственно модуль один - :app; алгоритм берётся из core, экран - из ui.
+plugins {
+    id 'com.android.application' version '9.1.0' apply false
+}

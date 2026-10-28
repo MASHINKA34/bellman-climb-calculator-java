@@ -1,0 +1,3 @@
+# Путь к Android SDK свой на каждой машине (build/, .gradle/, target/ и *.apk
+# уже исключены корневым .gitignore)
+android/local.properties
