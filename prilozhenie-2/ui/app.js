@@ -711,11 +711,14 @@ function stepsCard(result) {
         + '<p class="hint">На каждом шаге берётся пара вершин S и T из ещё не разделённой группы. Всё, что лежит '
         + 'за пределами группы, стягивается в одну вершину. Поток считается методом Форда–Фалкерсона: пути '
         + 'от S к T ищутся, пока они не исчерпаются. Разрез делит группу надвое, половины соединяет новая '
-        + 'ветвь дерева.</p>'
+        + 'ветвь дерева, а найденный поток вписывается в итоговую таблицу. После последнего шага остальные '
+        + 'пары таблицы заполняются по дереву.</p>'
         + summaryTable(result.steps)
         + '<div class="steps-toolbar"><button type="button" class="btn-ghost btn-small" id="btn-expand">'
         + 'Развернуть все шаги</button></div>';
-    html += result.steps.map(stepDetails).join('');
+    html += result.steps.map(function (step) {
+        return stepDetails(step, result);
+    }).join('');
     return html + '</div></section>';
 }
 
@@ -736,7 +739,7 @@ function summaryTable(steps) {
         + '<p class="legend">Нажмите на строку, чтобы открыть шаг целиком.</p>';
 }
 
-function stepDetails(step) {
+function stepDetails(step, result) {
     const contracted = step.nodes.filter(function (node) {
         return node.contracted;
     });
@@ -776,7 +779,69 @@ function stepDetails(step) {
     html += '<h4>Новая ветвь дерева</h4><p>' + setText(step.sourcePart) + ' — ' + setText(step.sinkPart)
         + ': <b>' + step.maxFlow + '</b></p>';
     html += '<h4>Дерево после шага</h4><div class="figure">' + drawGroupTree(step.tree) + '</div>';
+    html += '<h4>Итоговая таблица после шага ' + step.index + '</h4>' + progressTable(result, step.index);
     return html + '</div></details>';
+}
+
+// итоговая таблица после шага upTo. Каждый шаг находит поток ровно одной пары S-T,
+// он вписывается в таблицу сразу и уже не меняется. Остальные пары известны только
+// после последнего шага - их значения берутся по готовому дереву (result.table)
+function progressTable(result, upTo) {
+    const n = result.n;
+    const found = [];
+    for (let i = 0; i < n; i++) {
+        found.push(new Array(n).fill(null));
+    }
+    let current = null;
+    result.steps.forEach(function (step) {
+        if (step.index > upTo) {
+            return;
+        }
+        found[step.s - 1][step.t - 1] = step.maxFlow;
+        found[step.t - 1][step.s - 1] = step.maxFlow;
+        if (step.index === upTo) {
+            current = step;
+        }
+    });
+    const last = upTo === result.steps.length;
+
+    function isCurrent(i, j) {
+        return (i === current.s - 1 && j === current.t - 1) || (i === current.t - 1 && j === current.s - 1);
+    }
+
+    let html = '<div class="table-scroll"><table class="data final progress"><thead><tr><th></th>';
+    for (let j = 0; j < n; j++) {
+        html += '<th>' + (j + 1) + '</th>';
+    }
+    html += '</tr></thead><tbody>';
+    for (let i = 0; i < n; i++) {
+        html += '<tr><th>' + (i + 1) + '</th>';
+        for (let j = 0; j < n; j++) {
+            if (i === j) {
+                html += '<td class="diag">—</td>';
+            } else if (found[i][j] !== null) {
+                html += '<td class="found' + (isCurrent(i, j) ? ' fresh' : '') + '">' + found[i][j] + '</td>';
+            } else if (last) {
+                html += '<td class="from-tree">' + result.table[i][j] + '</td>';
+            } else {
+                html += '<td class="zero">·</td>';
+            }
+        }
+        html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+
+    const pairs = n * (n - 1) / 2;
+    html += '<p class="legend">Новое на этом шаге: <span class="fresh-mark">' + current.s + '–' + current.t
+        + ' = ' + current.maxFlow + '</span>. ';
+    if (last) {
+        html += 'Жирным — потоки, найденные на шагах (' + upTo + '), обычным — остальные ' + (pairs - upTo)
+            + ' по дереву: самая слабая ветвь на пути.</p>';
+    } else {
+        html += 'Найдено ' + upTo + ' ' + plural(upTo, 'пара', 'пары', 'пар') + ' из ' + pairs
+            + ', остальные — по дереву после шага ' + result.steps.length + '.</p>';
+    }
+    return html;
 }
 
 function stepMatrix(step) {

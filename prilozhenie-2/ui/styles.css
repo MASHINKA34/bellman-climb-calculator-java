@@ -479,6 +479,29 @@ table.final {
     margin: 0 auto;
 }
 
+/* итоговая таблица на шаге: найденные потоки жирным, поток этого шага выделен,
+   на последнем шаге пары по дереву - обычным шрифтом */
+table.progress td.found {
+    font-weight: 650;
+}
+
+table.progress td.fresh,
+.fresh-mark {
+    color: var(--accent);
+}
+
+table.progress td.fresh {
+    background: var(--accent-soft);
+}
+
+table.progress td.from-tree {
+    color: var(--text-dim);
+}
+
+.fresh-mark {
+    font-weight: 650;
+}
+
 .is-s {
     color: var(--accent);
 }
