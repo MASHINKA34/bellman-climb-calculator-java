@@ -5,7 +5,7 @@ import java.util.List;
 
 import ru.mashinka.multiflow.core.network.Network;
 
-// результат: шаги, готовое дерево Гомори–Ху и итоговая таблица потоков между всеми парами
+// результат: шаги, готовое дерево Гомори-Ху и итоговая таблица потоков между всеми парами
 //#неизменяемость - поля final, списки через unmodifiableList, таблица отдаётся копией
 //#дженерики - List<Step>, List<TreeEdge>
 public final class MultiFlowSolution {

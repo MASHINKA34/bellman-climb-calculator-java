@@ -1,10 +1,10 @@
 'use strict';
 
 /* ===========================================================================
-   Многополюсный поток — клиентская часть.
+   Многополюсный поток - клиентская часть.
 
    Весь расчёт выполняет ядро на Java (модуль core). В приложении его зовёт
-   мост android-bridge.js, на сайте — сервер по адресам api/example и api/solve.
+   мост android-bridge.js, на сайте - сервер по адресам api/example и api/solve.
    Здесь только ввод матрицы, таблицы и рисунки.
 
    Код рассчитан и на старый WebView из Android 10, поэтому без ?. и ??.
@@ -258,7 +258,7 @@ function buildMatrix() {
         html += '<tr><th scope="row">' + (i + 1) + '</th>';
         for (let j = 0; j < n; j++) {
             if (i === j) {
-                html += '<td class="diag" aria-hidden="true">—</td>';
+                html += '<td class="diag" aria-hidden="true">-</td>';
                 continue;
             }
             html += '<td class="' + (i < j ? 'upper' : 'lower') + '">'
@@ -670,7 +670,7 @@ function renderPlaceholder() {
 
 function renderResult(result) {
     const html = [];
-    html.push('<div class="message warn" id="stale-note" hidden>Сеть изменилась после расчёта — результат ниже '
+    html.push('<div class="message warn" id="stale-note" hidden>Сеть изменилась после расчёта - результат ниже '
         + 'относится к прошлым данным. Нажмите «Рассчитать».</div>');
     html.push('<nav class="chips" aria-label="Разделы результата">'
         + '<a href="#sec-network" data-target="sec-network">Сеть</a>'
@@ -701,7 +701,7 @@ function networkCard(result) {
         + '<div class="figure">' + drawNetwork(result.n, result.capacities) + '</div>'
         + '<p class="hint center">' + result.n + ' ' + plural(result.n, 'вершина', 'вершины', 'вершин') + ', '
         + branches + ' ' + plural(branches, 'ветвь', 'ветви', 'ветвей')
-        + '. На ветвях — пропускные способности.</p>'
+        + '. На ветвях - пропускные способности.</p>'
         + '</div></section>';
 }
 
@@ -709,7 +709,7 @@ function stepsCard(result) {
     const count = result.steps.length;
     let html = '<section class="card" id="sec-steps"><h2>Шаги: ' + count + '</h2><div class="card-body">'
         + '<p class="hint">На каждом шаге берётся пара вершин S и T из ещё не разделённой группы. Всё, что лежит '
-        + 'за пределами группы, стягивается в одну вершину. Поток считается методом Форда–Фалкерсона: пути '
+        + 'за пределами группы, стягивается в одну вершину. Поток считается методом Форда-Фалкерсона: пути '
         + 'от S к T ищутся, пока они не исчерпаются. Разрез делит группу надвое, половины соединяет новая '
         + 'ветвь дерева, а найденный поток вписывается в итоговую таблицу. После последнего шага остальные '
         + 'пары таблицы заполняются по дереву.</p>'
@@ -732,7 +732,7 @@ function summaryTable(steps) {
             + '<td class="nowrap">' + step.s + ' → ' + step.t + '</td>'
             + '<td class="num"><b>' + step.maxFlow + '</b></td>'
             + '<td>' + setSpan(step.sourceSide) + ' | ' + setSpan(step.sinkSide) + '</td>'
-            + '<td>' + setSpan(step.sourcePart) + ' — ' + setSpan(step.sinkPart) + '</td>'
+            + '<td>' + setSpan(step.sourcePart) + ' - ' + setSpan(step.sinkPart) + '</td>'
             + '</tr>';
     });
     return html + '</tbody></table></div>'
@@ -747,7 +747,7 @@ function stepDetails(step, result) {
         ? 'Стянуто: ' + contracted.map(function (node) {
             return '<b>' + escapeHtml(node.label) + '</b> = ' + setText(node.members);
         }).join(', ') + '.'
-        : 'Стягивать нечего — считаем по исходной сети.';
+        : 'Стягивать нечего - считаем по исходной сети.';
 
     let html = '<details class="step" id="step-' + step.index + '"><summary>'
         + '<span class="step-title">Шаг ' + step.index + ' из ' + step.total + '</span> '
@@ -773,10 +773,10 @@ function stepDetails(step, result) {
     html += '<p>Ветви разреза: ' + (step.cutEdges.length
         ? step.cutEdges.map(function (edge) {
             return '(' + edge.u + ',' + edge.v + ') = ' + edge.capacity;
-        }).join(', ') + '; сумма <b>' + step.maxFlow + '</b> — равна потоку.'
+        }).join(', ') + '; сумма <b>' + step.maxFlow + '</b> - равна потоку.'
         : 'нет: стороны ничем не связаны, сумма 0.') + '</p>';
 
-    html += '<h4>Новая ветвь дерева</h4><p>' + setText(step.sourcePart) + ' — ' + setText(step.sinkPart)
+    html += '<h4>Новая ветвь дерева</h4><p>' + setText(step.sourcePart) + ' - ' + setText(step.sinkPart)
         + ': <b>' + step.maxFlow + '</b></p>';
     html += '<h4>Дерево после шага</h4><div class="figure">' + drawGroupTree(step.tree) + '</div>';
     html += '<h4>Итоговая таблица после шага ' + step.index + '</h4>' + progressTable(result, step.index);
@@ -818,7 +818,7 @@ function progressTable(result, upTo) {
         html += '<tr><th>' + (i + 1) + '</th>';
         for (let j = 0; j < n; j++) {
             if (i === j) {
-                html += '<td class="diag">—</td>';
+                html += '<td class="diag">-</td>';
             } else if (found[i][j] !== null) {
                 html += '<td class="found' + (isCurrent(i, j) ? ' fresh' : '') + '">' + found[i][j] + '</td>';
             } else if (last) {
@@ -832,14 +832,14 @@ function progressTable(result, upTo) {
     html += '</tbody></table></div>';
 
     const pairs = n * (n - 1) / 2;
-    html += '<p class="legend">Новое на этом шаге: <span class="fresh-mark">' + current.s + '–' + current.t
+    html += '<p class="legend">Новое на этом шаге: <span class="fresh-mark">' + current.s + '-' + current.t
         + ' = ' + current.maxFlow + '</span>. ';
     if (last) {
-        html += 'Жирным — потоки, найденные на шагах (' + upTo + '), обычным — остальные ' + (pairs - upTo)
+        html += 'Жирным - потоки, найденные на шагах (' + upTo + '), обычным - остальные ' + (pairs - upTo)
             + ' по дереву: самая слабая ветвь на пути.</p>';
     } else {
         html += 'Найдено ' + upTo + ' ' + plural(upTo, 'пара', 'пары', 'пар') + ' из ' + pairs
-            + ', остальные — по дереву после шага ' + result.steps.length + '.</p>';
+            + ', остальные - по дереву после шага ' + result.steps.length + '.</p>';
     }
     return html;
 }
@@ -865,7 +865,7 @@ function stepMatrix(step) {
         html += '<tr><th class="' + headerClass(a) + '">' + escapeHtml(nodes[a].label) + '</th>';
         row.forEach(function (value, b) {
             if (a === b) {
-                html += '<td class="diag">—</td>';
+                html += '<td class="diag">-</td>';
             } else {
                 html += value ? '<td>' + value + '</td>' : '<td class="zero">·</td>';
             }
@@ -874,7 +874,7 @@ function stepMatrix(step) {
     });
     html += '</tbody></table></div>'
         + '<p class="legend"><span class="is-s">S = ' + step.s + '</span>, <span class="is-t">T = ' + step.t
-        + '</span>; точка — ветви нет.</p>';
+        + '</span>; точка - ветви нет.</p>';
     return html;
 }
 
@@ -891,17 +891,17 @@ function pathsList(step) {
         html += '<li><span class="path">' + labels.join(' → ') + '</span> <span class="amount">+' + path.amount
             + '</span></li>';
     });
-    return html + '</ol><p class="muted">Путей больше нет — поток максимальный.</p>';
+    return html + '</ol><p class="muted">Путей больше нет - поток максимальный.</p>';
 }
 
 function treeCard(result) {
-    let html = '<section class="card" id="sec-tree"><h2>Дерево Гомори–Ху</h2><div class="card-body">'
+    let html = '<section class="card" id="sec-tree"><h2>Дерево Гомори-Ху</h2><div class="card-body">'
         + '<div class="figure">' + drawFinalTree(result) + '</div>'
-        + '<p class="hint">На ветвях — максимальный поток между вершинами, которые ветвь соединяет. Ветвь, '
+        + '<p class="hint">На ветвях - максимальный поток между вершинами, которые ветвь соединяет. Ветвь, '
         + 'найденная на шаге для пары S, T, при следующих делениях групп может перейти к другим вершинам этих '
-        + 'групп — её поток при этом не меняется.</p><ul class="branches">';
+        + 'групп - её поток при этом не меняется.</p><ul class="branches">';
     result.tree.forEach(function (edge) {
-        html += '<li>' + edge.u + ' — ' + edge.v + ': <b>' + edge.value + '</b> <span class="muted">(шаг '
+        html += '<li>' + edge.u + ' - ' + edge.v + ': <b>' + edge.value + '</b> <span class="muted">(шаг '
             + edge.step + ')</span></li>';
     });
     return html + '</ul></div></section>';
@@ -920,7 +920,7 @@ function tableCard(result) {
     for (let i = 0; i < n; i++) {
         html += '<tr><th>' + (i + 1) + '</th>';
         for (let j = 0; j < n; j++) {
-            html += i === j ? '<td class="diag">—</td>' : '<td>' + result.table[i][j] + '</td>';
+            html += i === j ? '<td class="diag">-</td>' : '<td>' + result.table[i][j] + '</td>';
         }
         html += '</tr>';
     }
@@ -989,7 +989,7 @@ function drawFinalTree(result) {
     const edges = result.tree.map(function (edge) {
         return {a: edge.u - 1, b: edge.v - 1, value: edge.value, fresh: false};
     });
-    return drawTree(nodes, edges, 0, 'Дерево Гомори–Ху');
+    return drawTree(nodes, edges, 0, 'Дерево Гомори-Ху');
 }
 
 // дерево после шага: вершины дерева - группы, новая ветвь выделена цветом

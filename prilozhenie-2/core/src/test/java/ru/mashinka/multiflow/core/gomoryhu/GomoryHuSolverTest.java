@@ -225,7 +225,7 @@ class GomoryHuSolverTest {
         assertFalse(reachable(residual, 0, 1), where + ": после исчерпания путей от S к T не остаётся");
     }
 
-    // каждая ветвь дерева - минимальный разрез между своими концами (свойство дерева Гомори–Ху)
+    // каждая ветвь дерева - минимальный разрез между своими концами (свойство дерева Гомори-Ху)
     private static void checkFinalTree(int[][] matrix, MultiFlowSolution solution) {
         int n = matrix.length;
         List<TreeEdge> tree = solution.getTree();

@@ -1,6 +1,6 @@
 package ru.mashinka.multiflow.core.gomoryhu;
 
-// ветвь готового дерева Гомори–Ху: две вершины и максимальный поток между ними
+// ветвь готового дерева Гомори-Ху: две вершины и максимальный поток между ними
 public final class TreeEdge {
 
     private final int u;

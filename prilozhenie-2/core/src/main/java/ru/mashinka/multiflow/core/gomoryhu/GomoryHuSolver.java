@@ -15,7 +15,7 @@ import ru.mashinka.multiflow.core.flow.MaxFlow;
 import ru.mashinka.multiflow.core.log.CoreLog;
 import ru.mashinka.multiflow.core.network.Network;
 
-// многополюсный максимальный поток - дерево Гомори–Ху (Р. Гомори, Т. Ху, 1961)
+// многополюсный максимальный поток - дерево Гомори-Ху (Р. Гомори, Т. Ху, 1961)
 //
 // В начале дерево - одна группа со всеми вершинами. Каждый шаг берёт группу,
 // в которой больше одной вершины, выбирает в ней пару S и T, стягивает всё, что
@@ -183,7 +183,7 @@ public class GomoryHuSolver {
             }
         }
         if (cutSum != flow.getValue()) {
-            // по теореме Форда–Фалкерсона так быть не может; если случилось - ошибка в коде
+            // по теореме Форда-Фалкерсона так быть не может; если случилось - ошибка в коде
             String message = "run=" + runId + " step " + index + ": cut " + CoreLog.vertices(sourceSide)
                     + " | " + CoreLog.vertices(sinkSide) + " sums to " + cutSum
                     + ", but max flow is " + flow.getValue();
