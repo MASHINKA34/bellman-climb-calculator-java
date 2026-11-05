@@ -479,6 +479,12 @@ table.final {
     margin: 0 auto;
 }
 
+/* таблица после вычитания потоков: клетки, которые поменяли пути */
+table.residual td.changed {
+    background: var(--accent-soft);
+    font-weight: 650;
+}
+
 /* итоговая таблица на шаге: найденные потоки жирным, поток этого шага выделен,
    на последнем шаге пары по дереву - обычным шрифтом */
 table.progress td.found {

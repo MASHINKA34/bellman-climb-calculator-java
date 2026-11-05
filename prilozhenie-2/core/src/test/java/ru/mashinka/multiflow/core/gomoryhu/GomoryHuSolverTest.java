@@ -223,6 +223,20 @@ class GomoryHuSolverTest {
         }
         assertEquals(step.getMaxFlow(), total, where + ": сумма путей");
         assertFalse(reachable(residual, 0, 1), where + ": после исчерпания путей от S к T не остаётся");
+
+        // таблица после вычитания потоков, которую показывает экран, - ровно результат этих путей
+        int[][] reported = step.getResidual();
+        for (int a = 0; a < residual.length; a++) {
+            assertArrayEquals(residual[a], reported[a],
+                    where + ": таблица после вычитания, строка " + step.getNodes().get(a).getLabel());
+        }
+        // по ненулевым клеткам этой таблицы от S достижима ровно сторона S разреза
+        boolean[] seen = reachableFrom(reported, 0);
+        for (int a = 0; a < reported.length; a++) {
+            StepNode node = step.getNodes().get(a);
+            assertEquals(contains(step.getSourceSide(), node.getMembers()[0]), seen[a],
+                    where + ": вершина шага " + node.getLabel() + " и сторона разреза");
+        }
     }
 
     // каждая ветвь дерева - минимальный разрез между своими концами (свойство дерева Гомори-Ху)
@@ -259,6 +273,10 @@ class GomoryHuSolverTest {
     }
 
     private static boolean reachable(int[][] residual, int from, int to) {
+        return reachableFrom(residual, from)[to];
+    }
+
+    private static boolean[] reachableFrom(int[][] residual, int from) {
         boolean[] seen = new boolean[residual.length];
         Deque<Integer> queue = new ArrayDeque<>();
         queue.add(from);
@@ -272,7 +290,7 @@ class GomoryHuSolverTest {
                 }
             }
         }
-        return seen[to];
+        return seen;
     }
 
     // ------------------------------------------------------------------ данные

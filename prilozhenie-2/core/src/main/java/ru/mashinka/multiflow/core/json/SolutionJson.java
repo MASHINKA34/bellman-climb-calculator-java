@@ -84,6 +84,8 @@ public final class SolutionJson {
         }
         json.endArray();
         json.name("capacities").matrix(step.getCapacity());
+        // та же таблица после вычитания потоков, строки и столбцы в том же порядке
+        json.name("residual").matrix(step.getResidual());
 
         // пути - индексы строк таблицы шага
         json.name("paths").beginArray();

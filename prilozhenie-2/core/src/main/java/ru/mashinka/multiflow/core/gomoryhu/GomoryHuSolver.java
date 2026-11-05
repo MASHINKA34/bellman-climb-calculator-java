@@ -162,6 +162,16 @@ public class GomoryHuSolver {
             }
         }
 
+        // таблица после вычитания потоков: её показывает экран, по ней же виден разрез
+        int[][] residual = flow.getResidual();
+        if (LOG.isLoggable(Level.FINE)) {
+            for (int a = 0; a < size; a++) {
+                int row = a;
+                LOG.fine(() -> "run=" + runId + " step " + index + " residual row " + nodes.get(row).getLabel()
+                        + ": " + Arrays.toString(residual[row]));
+            }
+        }
+
         // разрез переводим обратно в исходные вершины: стянутая часть целиком на одной стороне
         boolean[] onSourceSide = new boolean[n];
         for (int vertex = 0; vertex < n; vertex++) {
@@ -223,7 +233,7 @@ public class GomoryHuSolver {
                     runId, index, total, source + 1, sink + 1));
         }
 
-        return new Step(index, total, source, sink, group, nodes, capacity, flow.getPaths(),
+        return new Step(index, total, source, sink, group, nodes, capacity, residual, flow.getPaths(),
                 flow.getValue(), sourceSide, sinkSide, cutEdges, sourcePart, sinkPart,
                 treeAfter, elapsed);
     }
@@ -383,14 +393,15 @@ public class GomoryHuSolver {
         return text.toString();
     }
 
+    // ветви разреза так же, как на экране: меньший номер вперёд, как клетка над диагональю
     private static String describeCut(List<CutEdge> cutEdges) {
         StringBuilder text = new StringBuilder();
         for (CutEdge edge : cutEdges) {
             if (text.length() > 0) {
                 text.append(' ');
             }
-            text.append('(').append(edge.getU() + 1).append(',').append(edge.getV() + 1).append(")=")
-                    .append(edge.getCapacity());
+            text.append('(').append(Math.min(edge.getU(), edge.getV()) + 1).append(',')
+                    .append(Math.max(edge.getU(), edge.getV()) + 1).append(")=").append(edge.getCapacity());
         }
         return text.length() == 0 ? "no branches" : text.toString();
     }

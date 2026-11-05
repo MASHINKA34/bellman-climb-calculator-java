@@ -42,6 +42,15 @@ class SolutionJsonTest {
         assertEquals(1, first.get("group").get(0).asInt());
         assertEquals(7, first.get("group").get(6).asInt());
 
+        // таблица после вычитания потоков на шаге 1 примера: пути 1-2 (+2), 1-3-4-2 (+3), 1-5-6-2 (+4)
+        JsonNode residual = first.get("residual");
+        assertEquals(7, residual.size());
+        assertEquals(0, residual.get(0).get(1).asInt(), "ветвь 1-2 насыщена");
+        assertEquals(4, residual.get(1).get(0).asInt(), "обратно 2-1: 2 + 2");
+        assertEquals(6, residual.get(0).get(2).asInt(), "1-3: 9 - 3");
+        assertEquals(12, residual.get(2).get(0).asInt(), "3-1: 9 + 3");
+        assertEquals(1, residual.get(5).get(1).asInt(), "6-2: 5 - 4");
+
         // таблица в JSON - та же, что в решении, только вершины считаются с единицы
         JsonNode table = root.get("table");
         for (int i = 0; i < 7; i++) {

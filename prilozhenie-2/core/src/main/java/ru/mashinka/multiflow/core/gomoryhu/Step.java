@@ -17,6 +17,7 @@ public final class Step {
     private final int[] group;
     private final List<StepNode> nodes;
     private final int[][] capacity;
+    private final int[][] residual;
     private final List<AugmentingPath> paths;
     private final int maxFlow;
     private final int[] sourceSide;
@@ -28,7 +29,7 @@ public final class Step {
     private final long elapsedNanos;
 
     Step(int index, int total, int source, int sink, int[] group, List<StepNode> nodes,
-         int[][] capacity, List<AugmentingPath> paths, int maxFlow,
+         int[][] capacity, int[][] residual, List<AugmentingPath> paths, int maxFlow,
          int[] sourceSide, int[] sinkSide, List<CutEdge> cutEdges,
          int[] sourcePart, int[] sinkPart, GroupTree treeAfter, long elapsedNanos) {
         this.index = index;
@@ -38,6 +39,7 @@ public final class Step {
         this.group = group.clone();
         this.nodes = Collections.unmodifiableList(nodes);
         this.capacity = capacity;
+        this.residual = residual;
         this.paths = Collections.unmodifiableList(paths);
         this.maxFlow = maxFlow;
         this.sourceSide = sourceSide.clone();
@@ -84,6 +86,17 @@ public final class Step {
         int[][] copy = new int[capacity.length][];
         for (int i = 0; i < capacity.length; i++) {
             copy[i] = capacity[i].clone();
+        }
+        return copy;
+    }
+
+    // та же таблица после того, как пути исчерпаны, - как в табличном методе на бумаге:
+    // по каждой ветви пути из c(i,j) вычтен пропущенный поток, к c(j,i) прибавлен.
+    // Нули на ветвях из стороны S в сторону T - насыщенные ветви, они и дают разрез
+    public int[][] getResidual() {
+        int[][] copy = new int[residual.length][];
+        for (int i = 0; i < residual.length; i++) {
+            copy[i] = residual[i].clone();
         }
         return copy;
     }

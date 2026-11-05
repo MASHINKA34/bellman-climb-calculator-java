@@ -710,7 +710,8 @@ function stepsCard(result) {
     let html = '<section class="card" id="sec-steps"><h2>Шаги: ' + count + '</h2><div class="card-body">'
         + '<p class="hint">На каждом шаге берётся пара вершин S и T из ещё не разделённой группы. Всё, что лежит '
         + 'за пределами группы, стягивается в одну вершину. Поток считается методом Форда-Фалкерсона: пути '
-        + 'от S к T ищутся, пока они не исчерпаются. Разрез делит группу надвое, половины соединяет новая '
+        + 'от S к T ищутся, пока они не исчерпаются. Таблица после вычитания потоков показывает, какие '
+        + 'ветви насыщены, - по ней виден разрез. Разрез делит группу надвое, половины соединяет новая '
         + 'ветвь дерева, а найденный поток вписывается в итоговую таблицу. После последнего шага остальные '
         + 'пары таблицы заполняются по дереву.</p>'
         + summaryTable(result.steps)
@@ -766,13 +767,21 @@ function stepDetails(step, result) {
         : '';
     html += '<p class="result-line">Максимальный поток ' + step.s + ' → ' + step.t + sum
         + ' = <b>' + step.maxFlow + '</b></p>';
+    html += '<h4>Таблица после вычитания потоков</h4>' + residualMatrix(step);
 
+    // сеть неориентированная: ветвь записывается меньшим номером вперёд, как клетка
+    // над диагональю, куда матрицу и вводят, - (2,6), а не (6,2)
+    const cutPairs = step.cutEdges.map(function (edge) {
+        return {a: Math.min(edge.u, edge.v), b: Math.max(edge.u, edge.v), capacity: edge.capacity};
+    }).sort(function (x, y) {
+        return x.a - y.a || x.b - y.b;
+    });
     html += '<h4>Разрез, разделяющий S и T</h4>'
         + '<p class="cut"><span class="side-s">' + setText(step.sourceSide) + '</span>'
         + ' <span class="cut-bar">|</span> <span class="side-t">' + setText(step.sinkSide) + '</span></p>';
-    html += '<p>Ветви разреза: ' + (step.cutEdges.length
-        ? step.cutEdges.map(function (edge) {
-            return '(' + edge.u + ',' + edge.v + ') = ' + edge.capacity;
+    html += '<p>Ветви разреза: ' + (cutPairs.length
+        ? cutPairs.map(function (pair) {
+            return '(' + pair.a + ',' + pair.b + ') = ' + pair.capacity;
         }).join(', ') + '; сумма <b>' + step.maxFlow + '</b> - равна потоку.'
         : 'нет: стороны ничем не связаны, сумма 0.') + '</p>';
 
@@ -844,25 +853,26 @@ function progressTable(result, upTo) {
     return html;
 }
 
+// подсветка заголовков таблиц шага: S - строка и столбец 0, T - 1, стянутые части курсивом
+function stepHeaderClass(nodes, index) {
+    if (index === 0) {
+        return 'is-s';
+    }
+    if (index === 1) {
+        return 'is-t';
+    }
+    return nodes[index].contracted ? 'is-contracted' : '';
+}
+
 function stepMatrix(step) {
     const nodes = step.nodes;
-    function headerClass(index) {
-        if (index === 0) {
-            return 'is-s';
-        }
-        if (index === 1) {
-            return 'is-t';
-        }
-        return nodes[index].contracted ? 'is-contracted' : '';
-    }
-
     let html = '<div class="table-scroll"><table class="data matrix-view"><thead><tr><th></th>';
     nodes.forEach(function (node, index) {
-        html += '<th class="' + headerClass(index) + '">' + escapeHtml(node.label) + '</th>';
+        html += '<th class="' + stepHeaderClass(nodes, index) + '">' + escapeHtml(node.label) + '</th>';
     });
     html += '</tr></thead><tbody>';
     step.capacities.forEach(function (row, a) {
-        html += '<tr><th class="' + headerClass(a) + '">' + escapeHtml(nodes[a].label) + '</th>';
+        html += '<tr><th class="' + stepHeaderClass(nodes, a) + '">' + escapeHtml(nodes[a].label) + '</th>';
         row.forEach(function (value, b) {
             if (a === b) {
                 html += '<td class="diag">-</td>';
@@ -875,6 +885,45 @@ function stepMatrix(step) {
     html += '</tbody></table></div>'
         + '<p class="legend"><span class="is-s">S = ' + step.s + '</span>, <span class="is-t">T = ' + step.t
         + '</span>; точка - ветви нет.</p>';
+    return html;
+}
+
+// таблица шага после того, как пути исчерпаны, - как в табличном методе на бумаге:
+// по каждой ветви пути из c(i,j) вычтен пропущенный поток, к c(j,i) прибавлен.
+// Сама таблица приходит из ядра (step.residual), здесь только вывод
+function residualMatrix(step) {
+    const nodes = step.nodes;
+    let html = '<div class="table-scroll"><table class="data matrix-view residual"><thead><tr><th></th>';
+    nodes.forEach(function (node, index) {
+        html += '<th class="' + stepHeaderClass(nodes, index) + '">' + escapeHtml(node.label) + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    step.residual.forEach(function (row, a) {
+        html += '<tr><th class="' + stepHeaderClass(nodes, a) + '">' + escapeHtml(nodes[a].label) + '</th>';
+        row.forEach(function (value, b) {
+            const before = step.capacities[a][b];
+            if (a === b) {
+                html += '<td class="diag">-</td>';
+            } else if (!before && !value) {
+                html += '<td class="zero">·</td>';
+            } else {
+                html += '<td' + (value !== before ? ' class="changed"' : '') + '>' + value + '</td>';
+            }
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // сторона S разреза в подписях таблицы шага: стянутая часть целиком на одной стороне
+    const reachable = nodes.filter(function (node) {
+        return step.sourceSide.indexOf(node.members[0]) !== -1;
+    }).map(function (node) {
+        return escapeHtml(node.label);
+    });
+    html += '<p class="legend">' + (step.paths.length
+        ? 'Выделены клетки, которые поменяли пути: из c(i,j) вычтен поток, к c(j,i) прибавлен. '
+        : 'Путей не было - таблица не изменилась. ')
+        + 'От S по ненулевым клеткам достижимы: ' + reachable.join(', ') + ' - это сторона S разреза.</p>';
     return html;
 }
 
