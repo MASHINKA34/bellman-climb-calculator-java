@@ -98,6 +98,38 @@ final class JsonWriter {
         return endArray();
     }
 
+    JsonWriter matrix(long[][] rows) {
+        beginArray();
+        for (long[] row : rows) {
+            numbers(row);
+        }
+        return endArray();
+    }
+
+    JsonWriter numbers(int[] values) {
+        beginArray();
+        for (int value : values) {
+            value(value);
+        }
+        return endArray();
+    }
+
+    JsonWriter numbers(long[] values) {
+        beginArray();
+        for (long value : values) {
+            value(value);
+        }
+        return endArray();
+    }
+
+    JsonWriter flags(boolean[] values) {
+        beginArray();
+        for (boolean value : values) {
+            value(value);
+        }
+        return endArray();
+    }
+
     @Override
     public String toString() {
         return out.toString();
