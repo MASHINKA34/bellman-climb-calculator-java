@@ -1195,6 +1195,47 @@ function openStep(index) {
     log.debug('step opened from summary', {step: index});
 }
 
+/* ============================ вкладки ============================ */
+
+// вкладка «Поток» - этот файл, вкладка «Размещение» - placement.js
+const TAB_STORAGE_KEY = 'multiflow.tab.v1';
+const TABS = {
+    flow: {subtitle: 'Максимальные потоки между всеми парами вершин - дерево Гомори-Ху'},
+    placement: {subtitle: 'Размещение производства - задача о назначениях, венгерский метод'}
+};
+
+function selectTab(name, reason) {
+    document.querySelectorAll('.tabs [data-tab]').forEach(function (button) {
+        const active = button.dataset.tab === name;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    $('#tab-flow').hidden = name !== 'flow';
+    $('#tab-placement').hidden = name !== 'placement';
+    $('#masthead-sub').textContent = TABS[name].subtitle;
+    writeStorage(TAB_STORAGE_KEY, name);
+    log.info('tab selected', {tab: name, reason: reason});
+}
+
+function onTabClick(event) {
+    const button = event.target.closest('[data-tab]');
+    if (!button || button.classList.contains('active')) {
+        return;
+    }
+    selectTab(button.dataset.tab, 'click');
+    // новая вкладка открывается с начала, а не с того места, где листали прошлую
+    window.scrollTo(0, 0);
+}
+
+function initTabs() {
+    const saved = readStorage(TAB_STORAGE_KEY);
+    if (saved && !TABS[saved]) {
+        log.warn('saved tab is unknown, opening the flow tab', {saved: saved});
+    }
+    selectTab(saved && TABS[saved] ? saved : 'flow', saved && TABS[saved] ? 'restored' : 'default');
+    $('.tabs').addEventListener('click', onTabClick);
+}
+
 /* ============================ запуск ============================ */
 
 function init() {
@@ -1225,6 +1266,7 @@ function init() {
     $('#btn-solve').addEventListener('click', onSolve);
     $('#results').addEventListener('click', onResultsClick);
     $('#results').addEventListener('keydown', onResultsKeydown);
+    initTabs();
 
     log.info('page ready', {size: state.size, restored: !!saved});
 }

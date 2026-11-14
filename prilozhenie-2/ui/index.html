@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
     <meta name="description"
-          content="Многополюсный максимальный поток: дерево Гомори-Ху и потоки между всеми парами вершин сети">
+          content="Многополюсный максимальный поток (дерево Гомори-Ху) и размещение производства венгерским методом">
     <title>Многополюсный поток</title>
     <link rel="stylesheet" href="styles.css">
     <script src="android-bridge.js"></script>
@@ -14,42 +14,106 @@
 <div class="page">
     <header class="masthead">
         <h1>Многополюсный поток</h1>
-        <p>Максимальные потоки между всеми парами вершин - дерево Гомори-Ху</p>
+        <p id="masthead-sub">Максимальные потоки между всеми парами вершин - дерево Гомори-Ху</p>
     </header>
 
-    <section class="card" id="input-card">
-        <h2>Сеть</h2>
-        <div class="card-body">
-            <div class="toolbar">
-                <div class="size-row">
-                    <label class="size-field" for="size">Число вершин</label>
-                    <select id="size"></select>
-                </div>
-                <div class="button-row">
-                    <button type="button" class="btn-ghost" id="btn-example">Пример</button>
-                    <button type="button" class="btn-ghost" id="btn-clear">Очистить</button>
-                </div>
-            </div>
-            <div class="undo" id="undo" hidden>
-                <span id="undo-text"></span>
-                <button type="button" class="btn-link" id="btn-undo">Вернуть как было</button>
-            </div>
-            <p class="hint">
-                Пропускные способности ветвей - целые числа от 0 до 1&nbsp;000&nbsp;000.
-                Пустая клетка - ветви нет. Матрица симметричная: c(i,&nbsp;j) = c(j,&nbsp;i),
-                вторая клетка заполняется сама.
-            </p>
-            <div class="matrix-scroll">
-                <table class="matrix" id="matrix"></table>
-            </div>
-            <div class="message error" id="input-message" role="alert" hidden></div>
-            <button type="button" class="btn-primary" id="btn-solve">Рассчитать</button>
-        </div>
-    </section>
+    <nav class="tabs" role="tablist" aria-label="Задачи">
+        <button type="button" role="tab" id="tab-btn-flow" data-tab="flow" aria-controls="tab-flow"
+                aria-selected="true" class="active">Поток</button>
+        <button type="button" role="tab" id="tab-btn-placement" data-tab="placement" aria-controls="tab-placement"
+                aria-selected="false">Размещение</button>
+    </nav>
 
-    <main id="results"></main>
+    <main>
+        <div class="tab-panel" id="tab-flow" role="tabpanel" aria-labelledby="tab-btn-flow">
+            <section class="card" id="input-card">
+                <h2>Сеть</h2>
+                <div class="card-body">
+                    <div class="toolbar">
+                        <div class="size-row">
+                            <label class="size-field" for="size">Число вершин</label>
+                            <select id="size"></select>
+                        </div>
+                        <div class="button-row">
+                            <button type="button" class="btn-ghost" id="btn-example">Пример</button>
+                            <button type="button" class="btn-ghost" id="btn-clear">Очистить</button>
+                        </div>
+                    </div>
+                    <div class="undo" id="undo" hidden>
+                        <span id="undo-text"></span>
+                        <button type="button" class="btn-link" id="btn-undo">Вернуть как было</button>
+                    </div>
+                    <p class="hint">
+                        Пропускные способности ветвей - целые числа от 0 до 1&nbsp;000&nbsp;000.
+                        Пустая клетка - ветви нет. Матрица симметричная: c(i,&nbsp;j) = c(j,&nbsp;i),
+                        вторая клетка заполняется сама.
+                    </p>
+                    <div class="matrix-scroll">
+                        <table class="matrix" id="matrix"></table>
+                    </div>
+                    <div class="message error" id="input-message" role="alert" hidden></div>
+                    <button type="button" class="btn-primary" id="btn-solve">Рассчитать</button>
+                </div>
+            </section>
+
+            <div id="results"></div>
+        </div>
+
+        <div class="tab-panel" id="tab-placement" role="tabpanel" aria-labelledby="tab-btn-placement" hidden>
+            <section class="card" id="pl-input-card">
+                <h2>Размещение производства</h2>
+                <div class="card-body">
+                    <div class="toolbar">
+                        <div class="size-row">
+                            <label class="size-field" for="pl-products">Видов продукции</label>
+                            <select id="pl-products"></select>
+                        </div>
+                        <div class="size-row">
+                            <label class="size-field" for="pl-plants">Предприятий</label>
+                            <select id="pl-plants"></select>
+                        </div>
+                        <div class="button-row">
+                            <button type="button" class="btn-ghost" id="pl-btn-example">Пример</button>
+                            <button type="button" class="btn-ghost" id="pl-btn-clear">Очистить</button>
+                        </div>
+                    </div>
+                    <div class="undo" id="pl-undo" hidden>
+                        <span id="pl-undo-text"></span>
+                        <button type="button" class="btn-link" id="pl-btn-undo">Вернуть как было</button>
+                    </div>
+                    <p class="hint">
+                        Каждый вид продукции производится на одном предприятии, на предприятии - не больше
+                        одного вида. Строки таблиц - виды продукции, столбцы - предприятия. Все числа целые:
+                        издержки и цена - рубли за единицу, от 0 до 1&nbsp;000&nbsp;000; объём - единиц в год,
+                        от 1 до 100&nbsp;000&nbsp;000.
+                    </p>
+
+                    <h3 class="input-title">Издержки производства единицы, руб.</h3>
+                    <div class="matrix-scroll">
+                        <table class="matrix" id="pl-production"></table>
+                    </div>
+
+                    <h3 class="input-title">Издержки сбыта единицы, руб.</h3>
+                    <div class="matrix-scroll">
+                        <table class="matrix" id="pl-sales"></table>
+                    </div>
+
+                    <h3 class="input-title">План по видам продукции</h3>
+                    <div class="matrix-scroll">
+                        <table class="matrix plan" id="pl-plan"></table>
+                    </div>
+
+                    <div class="message error" id="pl-input-message" role="alert" hidden></div>
+                    <button type="button" class="btn-primary" id="pl-btn-solve">Рассчитать</button>
+                </div>
+            </section>
+
+            <div id="pl-results"></div>
+        </div>
+    </main>
 </div>
 
 <script src="app.js"></script>
+<script src="placement.js"></script>
 </body>
 </html>
