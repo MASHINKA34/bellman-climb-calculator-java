@@ -9,9 +9,14 @@ import org.json.JSONObject;
 
 import ru.mashinka.multiflow.core.gomoryhu.GomoryHuSolver;
 import ru.mashinka.multiflow.core.gomoryhu.MultiFlowSolution;
+import ru.mashinka.multiflow.core.json.PlacementJson;
 import ru.mashinka.multiflow.core.json.SolutionJson;
 import ru.mashinka.multiflow.core.network.Examples;
 import ru.mashinka.multiflow.core.network.Network;
+import ru.mashinka.multiflow.core.placement.HungarianSolver;
+import ru.mashinka.multiflow.core.placement.PlacementExamples;
+import ru.mashinka.multiflow.core.placement.PlacementProblem;
+import ru.mashinka.multiflow.core.placement.PlacementSolution;
 
 // мост между страницей и ядром - замена сервера на телефоне
 // страница зовёт fetch('api/solve'), android-bridge.js переводит это в вызов solve()
@@ -22,6 +27,7 @@ public class MultiFlowBridge {
     static final String NAME = "MultiFlowBridge";
 
     private final GomoryHuSolver solver = new GomoryHuSolver();
+    private final HungarianSolver placementSolver = new HungarianSolver();
     private final boolean night;
 
     MultiFlowBridge(boolean night) {
@@ -92,6 +98,67 @@ public class MultiFlowBridge {
         }
     }
 
+    // ------------------------------------------------------------------ вкладка «Размещение»
+
+    // встроенный пример из пособия МЭСИ для кнопки «Пример»
+    @JavascriptInterface
+    public String placementExample() {
+        long startedAt = SystemClock.elapsedRealtime();
+        try {
+            String body = PlacementJson.example(PlacementExamples.production(), PlacementExamples.sales(),
+                    PlacementExamples.volume(), PlacementExamples.price());
+            AppLog.i("bridge", "placement example served: " + body.length() + " chars in "
+                    + (SystemClock.elapsedRealtime() - startedAt) + " ms");
+            return envelope(200, body);
+        } catch (RuntimeException unexpected) {
+            AppLog.e("bridge", "placement example failed", unexpected);
+            return failure(500, "Пример не загрузился", unexpected);
+        }
+    }
+
+    // расчёт: {"runId", "production": [[...]], "sales": [[...]], "volume": [...], "price": [...]}
+    @JavascriptInterface
+    public String solvePlacement(String requestJson) {
+        long startedAt = SystemClock.elapsedRealtime();
+        String runId = "unknown";
+        int length = requestJson == null ? 0 : requestJson.length();
+        try {
+            JSONObject request = new JSONObject(requestJson == null ? "" : requestJson);
+            runId = request.optString("runId", "unknown");
+            int[][] production = readMatrix(request.getJSONArray("production"));
+            int[][] sales = readMatrix(request.getJSONArray("sales"));
+            int[] volume = readVector(request.getJSONArray("volume"), "Плановый объём");
+            int[] price = readVector(request.getJSONArray("price"), "Плановая цена");
+            AppLog.i("bridge", "placement request run=" + runId + " products=" + production.length
+                    + " plants=" + (production.length > 0 ? production[0].length : 0)
+                    + " request=" + length + " chars");
+
+            PlacementSolution solution = placementSolver.solve(
+                    PlacementProblem.of(production, sales, volume, price), runId);
+            String body = PlacementJson.write(solution, runId);
+
+            AppLog.i("bridge", "placement ok run=" + runId + " iterations=" + solution.getIterations().size()
+                    + " total=" + solution.getTotalProfit() + " rub response=" + body.length() + " chars in "
+                    + (SystemClock.elapsedRealtime() - startedAt) + " ms");
+            return envelope(200, body);
+
+        } catch (JSONException malformed) {
+            AppLog.w("bridge", "placement rejected run=" + runId + ": request is not valid JSON ("
+                    + length + " chars)", malformed);
+            return failure(400, "Некорректный запрос", malformed);
+        } catch (IllegalArgumentException invalid) {
+            // плохие исходные данные - штатная ситуация, текст ошибки уже для человека
+            AppLog.w("bridge", "placement rejected run=" + runId + ": " + invalid.getMessage());
+            return failure(400, "Некорректные исходные данные", invalid);
+        } catch (RuntimeException unexpected) {
+            AppLog.e("bridge", "placement failed run=" + runId + " after "
+                    + (SystemClock.elapsedRealtime() - startedAt) + " ms", unexpected);
+            return failure(500, "Сбой расчёта", unexpected);
+        }
+    }
+
+    // ------------------------------------------------------------------ разбор запроса
+
     // каждая клетка обязана быть целым числом: дробное org.json молча обрезал бы
     private static int[][] readMatrix(JSONArray rows) throws JSONException {
         int[][] matrix = new int[rows.length()][];
@@ -113,6 +180,23 @@ public class MultiFlowBridge {
             }
         }
         return matrix;
+    }
+
+    private static int[] readVector(JSONArray values, String title) throws JSONException {
+        int[] vector = new int[values.length()];
+        for (int i = 0; i < values.length(); i++) {
+            Object value = values.get(i);
+            if (!(value instanceof Integer) && !(value instanceof Long)) {
+                throw new IllegalArgumentException(title + ", вид " + (i + 1) + ": нужно целое число, а пришло "
+                        + value);
+            }
+            long number = ((Number) value).longValue();
+            if (number < Integer.MIN_VALUE || number > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException(title + ", вид " + (i + 1) + ": слишком большое число " + number);
+            }
+            vector[i] = (int) number;
+        }
+        return vector;
     }
 
     // ответ в том же виде, в каком его отдал бы сервер сайта

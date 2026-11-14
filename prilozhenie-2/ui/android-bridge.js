@@ -56,6 +56,20 @@
     window.fetch = function (url, options) {
         var address = String(url);
 
+        // вкладка «Размещение»: api/placement/example и api/placement/solve
+        if (address.indexOf('api/placement/example') !== -1) {
+            return later(function () {
+                return MultiFlowBridge.placementExample();
+            });
+        }
+
+        if (address.indexOf('api/placement/solve') !== -1) {
+            var placementBody = options && options.body ? options.body : '{}';
+            return later(function () {
+                return MultiFlowBridge.solvePlacement(placementBody);
+            });
+        }
+
         if (address.indexOf('api/example') !== -1) {
             return later(function () {
                 return MultiFlowBridge.example();
