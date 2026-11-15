@@ -70,27 +70,42 @@ class GomoryHuSolverTest {
     }
 
     @Test
-    void firstStepTakesVerticesOneAndTwoWithoutContraction() {
+    void firstStepTakesVerticesOneAndTwo() {
         MultiFlowSolution solution = new GomoryHuSolver().solve(Network.of(Examples.defaultNetwork()), "test-first");
         Step first = solution.getSteps().get(0);
         assertEquals(0, first.getSource());
         assertEquals(1, first.getSink());
         assertEquals(7, first.getNodes().size());
-        for (StepNode node : first.getNodes()) {
-            assertFalse(node.isContracted());
+    }
+
+    // склейки нет: каждый шаг считается по всей сети 7 x 7, строки 1..7 по порядку, как на паре
+    @Test
+    void everyStepUsesWholeNetworkInVertexOrder() {
+        int[][] matrix = Examples.defaultNetwork();
+        MultiFlowSolution solution = new GomoryHuSolver().solve(Network.of(matrix), "test-whole");
+        for (Step step : solution.getSteps()) {
+            String where = "шаг " + step.getIndex();
+            assertEquals(7, step.getNodes().size(), where);
+            for (int a = 0; a < 7; a++) {
+                assertEquals(String.valueOf(a + 1), step.getNodes().get(a).getLabel(), where);
+            }
+            assertTablesEqual(matrix, step.getCapacity());
         }
     }
 
+    // пары и потоки примера по шагам: те же, что были со стягиванием (версия 1.4.1)
     @Test
-    void laterStepsContractVerticesOutsideTheGroup() {
-        MultiFlowSolution solution = new GomoryHuSolver().solve(Network.of(Examples.defaultNetwork()), "test-contract");
-        boolean contracted = false;
-        for (Step step : solution.getSteps()) {
-            for (StepNode node : step.getNodes()) {
-                contracted |= node.isContracted();
-            }
+    void exampleStepPairsAndFlows() {
+        MultiFlowSolution solution = new GomoryHuSolver().solve(Network.of(Examples.defaultNetwork()), "test-pairs");
+        int[][] expected = {{1, 2, 9}, {1, 3, 18}, {2, 4, 18}, {3, 5, 19}, {4, 6, 24}, {6, 7, 21}};
+        assertEquals(expected.length, solution.getSteps().size());
+        for (int k = 0; k < expected.length; k++) {
+            Step step = solution.getSteps().get(k);
+            String where = "шаг " + step.getIndex();
+            assertEquals(expected[k][0], step.getSource() + 1, where + ": S");
+            assertEquals(expected[k][1], step.getSink() + 1, where + ": T");
+            assertEquals(expected[k][2], step.getMaxFlow(), where + ": поток");
         }
-        assertTrue(contracted, "в примере должно быть видно стягивание вершин");
     }
 
     @Test
@@ -170,18 +185,17 @@ class GomoryHuSolverTest {
         for (Step step : solution.getSteps()) {
             String where = "шаг " + step.getIndex();
 
-            // строки таблицы шага покрывают все вершины ровно по разу, S - строка 0, T - строка 1
-            int[] seen = new int[n];
-            for (StepNode node : step.getNodes()) {
-                for (int vertex : node.getMembers()) {
-                    seen[vertex]++;
-                }
+            // строка a таблицы шага - вершина a: все вершины по порядку, таблица - исходная сеть
+            assertEquals(n, step.getNodes().size(), where);
+            for (int a = 0; a < n; a++) {
+                assertArrayEquals(new int[]{a}, step.getNodes().get(a).getMembers(), where + ": строка " + (a + 1));
             }
-            for (int vertex = 0; vertex < n; vertex++) {
-                assertEquals(1, seen[vertex], where + ": вершина " + (vertex + 1));
-            }
-            assertArrayEquals(new int[]{step.getSource()}, step.getNodes().get(0).getMembers(), where);
-            assertArrayEquals(new int[]{step.getSink()}, step.getNodes().get(1).getMembers(), where);
+            assertTablesEqual(matrix, step.getCapacity());
+
+            // S и T - две первые вершины делимой группы
+            int[] group = step.getGroup();
+            assertEquals(group[0], step.getSource(), where);
+            assertEquals(group[1], step.getSink(), where);
 
             // поток шага - это минимальный разрез между S и T в исходной сети
             assertEquals(BruteForce.minCut(matrix, step.getSource(), step.getSink()), step.getMaxFlow(), where);
@@ -208,11 +222,13 @@ class GomoryHuSolverTest {
     // пути складываются в поток, каждый проходим по остаточной сети, после них путей нет
     private static void checkExhaustion(Step step, String where) {
         int[][] residual = step.getCapacity();
+        int source = step.getSource();
+        int sink = step.getSink();
         int total = 0;
         for (AugmentingPath path : step.getPaths()) {
             int[] nodes = path.getNodes();
-            assertEquals(0, nodes[0], where + ": путь начинается в S");
-            assertEquals(1, nodes[nodes.length - 1], where + ": путь кончается в T");
+            assertEquals(source, nodes[0], where + ": путь начинается в S");
+            assertEquals(sink, nodes[nodes.length - 1], where + ": путь кончается в T");
             assertTrue(path.getAmount() > 0, where);
             for (int i = 0; i + 1 < nodes.length; i++) {
                 assertTrue(residual[nodes[i]][nodes[i + 1]] >= path.getAmount(), where + ": запас ветви");
@@ -222,7 +238,7 @@ class GomoryHuSolverTest {
             total += path.getAmount();
         }
         assertEquals(step.getMaxFlow(), total, where + ": сумма путей");
-        assertFalse(reachable(residual, 0, 1), where + ": после исчерпания путей от S к T не остаётся");
+        assertFalse(reachable(residual, source, sink), where + ": после исчерпания путей от S к T не остаётся");
 
         // таблица после вычитания потоков, которую показывает экран, - ровно результат этих путей
         int[][] reported = step.getResidual();
@@ -231,7 +247,7 @@ class GomoryHuSolverTest {
                     where + ": таблица после вычитания, строка " + step.getNodes().get(a).getLabel());
         }
         // по ненулевым клеткам этой таблицы от S достижима ровно сторона S разреза
-        boolean[] seen = reachableFrom(reported, 0);
+        boolean[] seen = reachableFrom(reported, source);
         for (int a = 0; a < reported.length; a++) {
             StepNode node = step.getNodes().get(a);
             assertEquals(contains(step.getSourceSide(), node.getMembers()[0]), seen[a],
@@ -257,7 +273,7 @@ class GomoryHuSolverTest {
                 assertTrue(Math.abs(xst[a][b]) <= capacity[a][b], cell + ": не больше пропускной способности");
                 sum += xst[a][b];
             }
-            int expected = a == 0 ? step.getMaxFlow() : a == 1 ? -step.getMaxFlow() : 0;
+            int expected = a == step.getSource() ? step.getMaxFlow() : a == step.getSink() ? -step.getMaxFlow() : 0;
             assertEquals(expected, sum, where + ": баланс строки " + label);
         }
     }
