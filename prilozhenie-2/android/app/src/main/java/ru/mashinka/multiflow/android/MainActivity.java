@@ -2,6 +2,7 @@ package ru.mashinka.multiflow.android;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.res.Configuration;
@@ -22,6 +23,9 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 
+import java.util.ArrayList;
+import java.util.List;
+
 // единственный экран: WebView со страницей из папки ui
 // вместо запросов к серверу страница зовёт MultiFlowBridge, поэтому работает без интернета
 public class MainActivity extends Activity {
@@ -31,6 +35,13 @@ public class MainActivity extends Activity {
     private FrameLayout root;
     private WebView webView;
     private long createdAt;
+
+    // таблица по фото: камера/галерея и распознавание
+    private PhotoScanner photoScanner;
+    // ответы по фото, пришедшие до того, как страница загрузилась (экран пересоздавался,
+    // пока была открыта камера), - отдаются странице, как только она будет готова
+    private boolean pageReady;
+    private final List<String> pendingPhotoAnswers = new ArrayList<>();
 
     // последние применённые отступы под системные панели: лишний setPadding не нужен
     private int[] appliedInsets = new int[]{-1, -1, -1, -1};
@@ -80,9 +91,11 @@ public class MainActivity extends Activity {
                 == Configuration.UI_MODE_NIGHT_YES;
         AppLog.i("screen", "system theme " + (night ? "dark" : "light"));
 
+        photoScanner = new PhotoScanner(this, this::deliverPhotoAnswer, savedInstanceState);
+
         webView.setWebChromeClient(new ConsoleToLogcat());
         webView.setWebViewClient(new PageClient());
-        webView.addJavascriptInterface(new MultiFlowBridge(night), MultiFlowBridge.NAME);
+        webView.addJavascriptInterface(new MultiFlowBridge(night, this, photoScanner), MultiFlowBridge.NAME);
 
         AppLog.i("screen", "loading " + PAGE);
         webView.loadUrl(PAGE);
@@ -162,6 +175,15 @@ public class MainActivity extends Activity {
         public void onPageFinished(WebView view, String url) {
             AppLog.i("screen", "page loaded " + url + " in " + (SystemClock.elapsedRealtime() - createdAt)
                     + " ms since screen start");
+            pageReady = true;
+            if (!pendingPhotoAnswers.isEmpty()) {
+                AppLog.i("photo", "page is ready, passing " + pendingPhotoAnswers.size() + " delayed photo answer(s)");
+                List<String> answers = new ArrayList<>(pendingPhotoAnswers);
+                pendingPhotoAnswers.clear();
+                for (String json : answers) {
+                    deliverPhotoAnswer(json);
+                }
+            }
         }
 
         @Override
@@ -194,12 +216,53 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ------------------------------------------------------------------ таблица по фото
+
+    // камера или галерея закрылись - снимок уходит на распознавание
+    @Override
+    @SuppressWarnings("deprecation")
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (photoScanner == null || !photoScanner.onActivityResult(requestCode, resultCode, data)) {
+            AppLog.w("screen", "unexpected activity result: request " + requestCode + ", result " + resultCode);
+            super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    // ответ распознавания - странице: window.onPhotoScan(...) в photo.js
+    private void deliverPhotoAnswer(String json) {
+        if (webView == null) {
+            AppLog.w("photo", "photo answer dropped: the screen is already closed (" + json.length() + " chars)");
+            return;
+        }
+        if (!pageReady) {
+            pendingPhotoAnswers.add(json);
+            AppLog.i("photo", "page is not loaded yet, photo answer is delayed (" + json.length() + " chars)");
+            return;
+        }
+        webView.evaluateJavascript("window.onPhotoScan && window.onPhotoScan(" + json + ")", result -> {
+            if (!"true".equals(result)) {
+                AppLog.w("photo", "page did not accept the photo answer: " + result);
+            }
+        });
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (photoScanner != null) {
+            photoScanner.save(outState);
+        }
+    }
+
     // ------------------------------------------------------------------ завершение
 
     @Override
     protected void onDestroy() {
         AppLog.i("screen", "destroy: finishing=" + isFinishing()
                 + ", configuration change=" + isChangingConfigurations());
+        if (photoScanner != null) {
+            photoScanner.close();
+        }
         destroyWebView();
         root = null;
         super.onDestroy();

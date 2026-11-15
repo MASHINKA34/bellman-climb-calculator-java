@@ -1,5 +1,6 @@
 package ru.mashinka.multiflow.android;
 
+import android.app.Activity;
 import android.os.SystemClock;
 import android.webkit.JavascriptInterface;
 
@@ -13,6 +14,7 @@ import ru.mashinka.multiflow.core.json.PlacementJson;
 import ru.mashinka.multiflow.core.json.SolutionJson;
 import ru.mashinka.multiflow.core.network.Examples;
 import ru.mashinka.multiflow.core.network.Network;
+import ru.mashinka.multiflow.core.photo.PhotoTarget;
 import ru.mashinka.multiflow.core.placement.HungarianSolver;
 import ru.mashinka.multiflow.core.placement.PlacementExamples;
 import ru.mashinka.multiflow.core.placement.PlacementProblem;
@@ -29,9 +31,13 @@ public class MultiFlowBridge {
     private final GomoryHuSolver solver = new GomoryHuSolver();
     private final HungarianSolver placementSolver = new HungarianSolver();
     private final boolean night;
+    private final Activity activity;
+    private final PhotoScanner photoScanner;
 
-    MultiFlowBridge(boolean night) {
+    MultiFlowBridge(boolean night, Activity activity, PhotoScanner photoScanner) {
         this.night = night;
+        this.activity = activity;
+        this.photoScanner = photoScanner;
     }
 
     // уровень логов для страницы: тот же, что у приложения
@@ -154,6 +160,43 @@ public class MultiFlowBridge {
             AppLog.e("bridge", "placement failed run=" + runId + " after "
                     + (SystemClock.elapsedRealtime() - startedAt) + " ms", unexpected);
             return failure(500, "Сбой расчёта", unexpected);
+        }
+    }
+
+    // ------------------------------------------------------------------ таблица по фото
+
+    // страница показывает кнопки «По фото» только в приложении: на сайте распознавать нечем
+    @JavascriptInterface
+    public String photoSupported() {
+        return "yes";
+    }
+
+    // {"scanId", "target": flow|production|sales|plan, "source": camera|gallery}
+    // отвечает сразу; распознанная таблица придёт позже в window.onPhotoScan
+    @JavascriptInterface
+    public String scanPhoto(String requestJson) {
+        String scanId = "unknown";
+        try {
+            JSONObject request = new JSONObject(requestJson == null ? "" : requestJson);
+            scanId = request.optString("scanId", "unknown");
+            String target = PhotoTarget.fromId(request.getString("target")).getId();
+            String source = request.getString("source");
+            if (!"camera".equals(source) && !"gallery".equals(source)) {
+                throw new IllegalArgumentException("Неизвестный источник фото: " + source);
+            }
+            AppLog.i("bridge", "photo request scan=" + scanId + " target=" + target + " source=" + source);
+            String id = scanId;
+            activity.runOnUiThread(() -> photoScanner.start(id, target, source));
+            return envelope(202, "{\"scanId\":\"" + escape(scanId) + "\"}");
+        } catch (JSONException malformed) {
+            AppLog.w("bridge", "photo request rejected scan=" + scanId + ": not valid JSON", malformed);
+            return failure(400, "Некорректный запрос", malformed);
+        } catch (IllegalArgumentException invalid) {
+            AppLog.w("bridge", "photo request rejected scan=" + scanId + ": " + invalid.getMessage());
+            return failure(400, "Некорректный запрос", invalid);
+        } catch (RuntimeException unexpected) {
+            AppLog.e("bridge", "photo request failed scan=" + scanId, unexpected);
+            return failure(500, "Сбой при запуске съёмки", unexpected);
         }
     }
 

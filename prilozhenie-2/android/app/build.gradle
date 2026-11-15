@@ -12,6 +12,12 @@ android {
         targetSdk = 36
         versionCode = 4
         versionName = '1.3.0'
+
+        // ML Kit кладёт модель распознавания в APK отдельно под каждую архитектуру процессора,
+        // ~4 МБ на каждую. Оставлены телефоны (arm64-v8a, armeabi-v7a) и x86_64 - эмуляторы
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+        }
     }
 
     compileOptions {
@@ -25,9 +31,20 @@ android {
             // а не их копия. Ради этого core и написан на чистой Java без зависимостей.
             java.srcDir '../../core/src/main/java'
 
-            // Экран - общая папка ui: index.html, styles.css, android-bridge.js, app.js и placement.js.
+            // Экран - общая папка ui: index.html, styles.css, android-bridge.js, app.js, placement.js, photo.js.
             // На втором этапе из неё же соберётся сайт.
             assets.srcDir '../../ui'
+        }
+    }
+
+    // библиотеки распознавания (.so, 7-12 МБ на архитектуру) и код ML Kit (dex, ~9 МБ)
+    // хранятся в APK сжатыми: файл для раздачи вдвое меньше, при установке Android их распакует
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+        dex {
+            useLegacyPackaging = true
         }
     }
 
@@ -38,4 +55,9 @@ android {
                     'proguard-rules.pro'
         }
     }
+}
+
+dependencies {
+    // распознавание текста на фото таблицы, модель внутри APK - работает без сети и без сервисов Google
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
 }

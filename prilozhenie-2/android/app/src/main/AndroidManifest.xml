@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
         Разрешений здесь нет намеренно, даже на доступ в сеть: весь расчёт идёт
         на телефоне, и приложение физически не может выйти в интернет.
+        Библиотека распознавания фото (ML Kit) сама добавляет доступ в сеть для своей
+        телеметрии - он убран: модель лежит внутри приложения, сеть ей не нужна.
     -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 
     <application
         android:name=".MultiFlowApp"
@@ -30,6 +35,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            Файл, куда системная камера кладёт снимок таблицы. Наружу не открыт:
+            камера получает право записи только на этот адрес и только на один снимок.
+            Разрешение на камеру приложению не нужно - снимает системная камера.
+        -->
+        <provider
+            android:name=".PhotoProvider"
+            android:authorities="${applicationId}.photos"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 
 </manifest>
