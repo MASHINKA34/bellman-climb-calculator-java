@@ -39,6 +39,7 @@
                             <button type="button" class="btn-ghost" id="btn-clear">Очистить</button>
                         </div>
                     </div>
+                    <button type="button" class="btn-ghost btn-photo btn-block" data-photo="flow">По фото</button>
                     <div class="undo" id="undo" hidden>
                         <span id="undo-text"></span>
                         <button type="button" class="btn-link" id="btn-undo">Вернуть как было</button>
@@ -88,17 +89,26 @@
                         от 1 до 100&nbsp;000&nbsp;000.
                     </p>
 
-                    <h3 class="input-title">Издержки производства единицы, руб.</h3>
+                    <div class="title-row">
+                        <h3 class="input-title">Издержки производства единицы, руб.</h3>
+                        <button type="button" class="btn-ghost btn-small btn-photo" data-photo="production">По фото</button>
+                    </div>
                     <div class="matrix-scroll">
                         <table class="matrix" id="pl-production"></table>
                     </div>
 
-                    <h3 class="input-title">Издержки сбыта единицы, руб.</h3>
+                    <div class="title-row">
+                        <h3 class="input-title">Издержки сбыта единицы, руб.</h3>
+                        <button type="button" class="btn-ghost btn-small btn-photo" data-photo="sales">По фото</button>
+                    </div>
                     <div class="matrix-scroll">
                         <table class="matrix" id="pl-sales"></table>
                     </div>
 
-                    <h3 class="input-title">План по видам продукции</h3>
+                    <div class="title-row">
+                        <h3 class="input-title">План по видам продукции</h3>
+                        <button type="button" class="btn-ghost btn-small btn-photo" data-photo="plan">По фото</button>
+                    </div>
                     <div class="matrix-scroll">
                         <table class="matrix plan" id="pl-plan"></table>
                     </div>
@@ -115,5 +125,6 @@
 
 <script src="app.js"></script>
 <script src="placement.js"></script>
+<script src="photo.js"></script>
 </body>
 </html>

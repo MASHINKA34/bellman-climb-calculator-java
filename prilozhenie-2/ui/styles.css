@@ -898,3 +898,213 @@ table.answer tfoot th {
     -webkit-columns: 2;
     columns: 2;
 }
+
+/* ---------------------------------------------------------------- по фото */
+
+/* кнопки «По фото» есть только в приложении: класс has-photo ставит photo.js */
+.btn-photo {
+    display: none;
+}
+
+.has-photo .btn-photo {
+    display: inline-block;
+}
+
+.has-photo .btn-photo.btn-block {
+    display: block;
+    width: 100%;
+    margin: 0 0 12px;
+}
+
+.title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 16px 0 6px;
+}
+
+.title-row .input-title {
+    margin: 0 10px 0 0;
+}
+
+.title-row .btn-photo {
+    flex: none;
+}
+
+/* клетки, подставленные по фото: распознанные - лёгкая заливка, «проверить» - оранжевая
+   рамка, нераспознанные - красная пунктирная; ошибка ввода (invalid) важнее */
+table.matrix td input.photo-ok:not(.invalid) {
+    background: var(--accent-soft);
+}
+
+table.matrix td input.photo-check:not(.invalid) {
+    border-color: var(--sink);
+    box-shadow: 0 0 0 2px var(--sink-soft);
+}
+
+table.matrix td input.photo-missing:not(.invalid) {
+    border: 1px dashed var(--danger-text);
+    background: var(--danger-bg);
+}
+
+/* окно снизу экрана (на широком - по центру) */
+.sheet {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.sheet-panel {
+    width: 100%;
+    max-width: 640px;
+    max-height: 92vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 16px 16px 0 0;
+    background: var(--surface);
+    color: var(--text);
+}
+
+@media (min-width: 640px) {
+    .sheet {
+        align-items: center;
+    }
+
+    .sheet-panel {
+        border-radius: 16px;
+    }
+}
+
+body.sheet-open {
+    overflow: hidden;
+}
+
+.sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.sheet-head h2 {
+    margin: 0 10px 0 0;
+    font-size: 16px;
+    font-weight: 650;
+}
+
+.sheet-body {
+    padding: 14px 16px 18px;
+}
+
+.photo-sources {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 10px;
+}
+
+.photo-sources button {
+    min-height: 72px;
+    font-size: 16px;
+}
+
+.photo-wait {
+    margin: 8px 0 4px;
+    font-size: 15.5px;
+    text-align: center;
+}
+
+.photo-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 8px;
+    margin-top: 14px;
+}
+
+.photo-actions.single {
+    grid-template-columns: 1fr;
+}
+
+.photo-actions .btn-primary {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+}
+
+.photo-image {
+    margin: 0 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+    overflow: hidden;
+    cursor: zoom-in;
+}
+
+.photo-image img {
+    display: block;
+    width: 100%;
+    max-height: 34vh;
+    object-fit: contain;
+}
+
+.photo-image.zoom img {
+    max-height: none;
+}
+
+.photo-notes {
+    margin: 0 0 10px;
+    padding-left: 20px;
+    color: var(--text-dim);
+    font-size: 13.5px;
+}
+
+table.photo-grid {
+    font-size: 13px;
+}
+
+table.photo-grid th,
+table.photo-grid td {
+    padding: 5px 6px;
+}
+
+table.photo-grid td.check,
+.photo-mark.check {
+    background: var(--sink-soft);
+    color: var(--sink);
+    font-weight: 650;
+}
+
+table.photo-grid td.missing,
+.photo-mark.missing {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+    font-weight: 700;
+}
+
+table.photo-grid td.mirror,
+.photo-mark.mirror {
+    color: var(--accent);
+    font-style: italic;
+}
+
+table.photo-grid td.conflict,
+.photo-mark.conflict {
+    box-shadow: inset 0 0 0 2px var(--danger-text);
+    color: var(--danger-text);
+    font-weight: 700;
+}
+
+.photo-mark {
+    display: inline-block;
+    min-width: 22px;
+    padding: 0 5px;
+    border-radius: 4px;
+    text-align: center;
+}

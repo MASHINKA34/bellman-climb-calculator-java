@@ -211,6 +211,8 @@ const state = {
     resultInput: null,
     // ввод до нажатия «Пример» или «Очистить», чтобы вернуть одним нажатием
     undo: null,
+    // клетки, подставленные по фото: «i:j» -> 'ok' (распознана) или 'check' (проверить)
+    photoMarks: {},
     busy: false,
     runCounter: 0,
     saveTimer: 0
@@ -261,9 +263,11 @@ function buildMatrix() {
                 html += '<td class="diag" aria-hidden="true">-</td>';
                 continue;
             }
+            const mark = state.photoMarks[i + ':' + j];
             html += '<td class="' + (i < j ? 'upper' : 'lower') + '">'
                 + '<input type="text" inputmode="numeric" autocomplete="off" autocorrect="off"'
                 + ' spellcheck="false" maxlength="9" enterkeyhint="next"'
+                + (mark ? ' class="photo-' + mark + '"' : '')
                 + ' data-i="' + i + '" data-j="' + j + '"'
                 + ' aria-label="' + cellName(i, j) + '"'
                 + ' value="' + escapeHtml(state.cells[i][j]) + '"></td>';
@@ -404,6 +408,16 @@ function onCellInput(event) {
     if (mirror) {
         mirror.value = text;
     }
+    // клетку поправили руками - подсветка «по фото» с неё и с зеркальной снимается
+    if (state.photoMarks[i + ':' + j] || state.photoMarks[j + ':' + i]) {
+        delete state.photoMarks[i + ':' + j];
+        delete state.photoMarks[j + ':' + i];
+        [input, mirror].forEach(function (element) {
+            if (element) {
+                element.classList.remove('photo-ok', 'photo-check');
+            }
+        });
+    }
 
     hideUndo();
     refreshValidation(false);
@@ -467,12 +481,15 @@ function onSizeChange() {
         }
     }
     hideUndo();
+    state.photoMarks = {};
     applyInput(size, cells);
     log.info('matrix resized', {from: previous, to: size});
 }
 
-function replaceInput(size, cells, message) {
+// marks - подсветка клеток, подставленных по фото; без неё подсветка снимается
+function replaceInput(size, cells, message, marks) {
     const before = {size: state.size, cells: state.cells};
+    state.photoMarks = marks || {};
     applyInput(size, cells);
     hideInputMessage();
     if (hasAnyValue(before.cells)) {
@@ -495,8 +512,40 @@ function onUndo() {
     }
     const before = state.undo;
     hideUndo();
+    state.photoMarks = {};
     applyInput(before.size, before.cells);
-    log.info('input restored after example/clear', {size: before.size});
+    log.info('input restored after example/clear/photo', {size: before.size});
+}
+
+// таблица по фото (photo.js): матрица n x n уже симметричная - ядро сверило зеркальные клетки
+function applyFlowPhoto(answer) {
+    const n = answer.rows;
+    const cells = emptyCells(n);
+    const marks = {};
+    let filled = 0;
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            if (i === j) {
+                continue;
+            }
+            const value = answer.values[i][j];
+            cells[i][j] = value === null ? '' : String(value);
+            if (answer.flags[i][j] !== 0) {
+                marks[i + ':' + j] = 'check';
+            } else if (value !== null) {
+                marks[i + ':' + j] = 'ok';
+            }
+            if (value !== null && i < j) {
+                filled++;
+            }
+        }
+    }
+    replaceInput(n, cells, 'Подставлено по фото.', marks);
+    log.info('matrix filled from photo', {scan: answer.scanId, size: n, branches: filled});
+    const card = $('#input-card');
+    if (card.scrollIntoView) {
+        card.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
 }
 
 function onClear() {

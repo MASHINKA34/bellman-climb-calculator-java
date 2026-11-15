@@ -32,6 +32,11 @@ const PL_TITLES = {
     volume: 'Объём',
     price: 'Цена'
 };
+const PL_PHOTO_TITLES = {
+    production: 'издержки производства',
+    sales: 'издержки сбыта',
+    plan: 'план'
+};
 
 const plLog = createLogger('placement');
 
@@ -47,6 +52,8 @@ const pl = {
     resultInput: null,
     // ввод до нажатия «Пример» или «Очистить», чтобы вернуть одним нажатием
     undo: null,
+    // клетки, подставленные по фото: ключ plErrorKey -> 'ok', 'check' или 'missing'
+    photoMarks: {},
     busy: false,
     // после первой попытки расчёта пустые клетки подсвечиваются сразу, до неё - нет:
     // иначе пустая форма с самого начала была бы вся красной
@@ -147,8 +154,10 @@ function plCellName(field, i, j) {
 }
 
 function plInputHtml(field, i, j, value) {
+    const mark = pl.photoMarks[plErrorKey(field, i, j)];
     return '<input type="text" inputmode="numeric" autocomplete="off" autocorrect="off"'
         + ' spellcheck="false" maxlength="9" enterkeyhint="next"'
+        + (mark ? ' class="photo-' + mark + '"' : '')
         + ' data-field="' + field + '" data-i="' + i + '"' + (j === null ? '' : ' data-j="' + j + '"')
         + ' aria-label="' + escapeHtml(plCellName(field, i, j)) + '"'
         + ' value="' + escapeHtml(value) + '">';
@@ -357,6 +366,12 @@ function plOnInput(event) {
     } else {
         pl.input[field][i][j] = element.value;
     }
+    // клетку поправили руками - подсветка «по фото» с неё снимается
+    const key = plErrorKey(field, i, j);
+    if (pl.photoMarks[key]) {
+        delete pl.photoMarks[key];
+        element.classList.remove('photo-ok', 'photo-check', 'photo-missing');
+    }
     plHideUndo();
     plRefreshValidation(false);
     plUpdateStaleNote();
@@ -422,8 +437,10 @@ function plOnPlantsChange() {
     plLog.info('plants changed', {from: previous, to: plants, products: products});
 }
 
-function plReplaceInput(products, plants, input, message) {
+// marks - подсветка клеток, подставленных по фото; без неё подсветка снимается
+function plReplaceInput(products, plants, input, message, marks) {
     const before = {products: pl.products, plants: pl.plants, input: pl.input};
+    pl.photoMarks = marks || {};
     plApplyInput(products, plants, input);
     plHideMessage();
     if (plHasAnyValue(before.input)) {
@@ -446,8 +463,73 @@ function plOnUndo() {
     }
     const before = pl.undo;
     plHideUndo();
+    pl.photoMarks = {};
     plApplyInput(before.products, before.plants, before.input);
-    plLog.info('input restored after example/clear', {products: before.products, plants: before.plants});
+    plLog.info('input restored after example/clear/photo', {products: before.products, plants: before.plants});
+}
+
+// таблица по фото (photo.js): издержки производства или сбыта задают число видов
+// и предприятий, план - число видов (предприятий при нужде становится не меньше)
+function plApplyPhoto(answer) {
+    const field = answer.target;
+    const rows = answer.rows;
+    let products;
+    let plants;
+    if (field === 'plan') {
+        products = rows;
+        plants = Math.max(pl.plants, rows);
+        if (plants > pl.plants) {
+            plLog.info('plants increased to fit products from the plan photo', {from: pl.plants, to: plants});
+        }
+    } else {
+        products = rows;
+        plants = answer.columns;
+    }
+    const input = plResize(pl.input, products, plants);
+
+    // подсветка других таблиц остаётся, этой - заменяется
+    const marks = {};
+    Object.keys(pl.photoMarks).forEach(function (key) {
+        const owner = key.split(':')[0];
+        const sameTable = field === 'plan' ? (owner === 'volume' || owner === 'price') : owner === field;
+        if (!sameTable) {
+            marks[key] = pl.photoMarks[key];
+        }
+    });
+
+    let missing = 0;
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < answer.columns; j++) {
+            const value = answer.values[i][j];
+            const text = value === null ? '' : String(value);
+            const flag = answer.flags[i][j];
+            let key;
+            if (field === 'plan') {
+                const planField = j === 0 ? 'volume' : 'price';
+                input[planField][i] = text;
+                key = plErrorKey(planField, i, null);
+            } else {
+                input[field][i][j] = text;
+                key = plErrorKey(field, i, j);
+            }
+            marks[key] = flag === 0 ? 'ok' : flag === 2 ? 'missing' : 'check';
+            if (flag === 2) {
+                missing++;
+            }
+        }
+    }
+    plReplaceInput(products, plants, input, 'Подставлено по фото: ' + PL_PHOTO_TITLES[field] + '.', marks);
+    plLog.info('table filled from photo', {
+        scan: answer.scanId,
+        table: field,
+        products: products,
+        plants: plants,
+        missing: missing
+    });
+    const table = $(field === 'plan' ? '#pl-plan' : '#pl-' + field);
+    if (table && table.scrollIntoView) {
+        table.scrollIntoView({behavior: 'smooth', block: 'center'});
+    }
 }
 
 function plOnClear() {
