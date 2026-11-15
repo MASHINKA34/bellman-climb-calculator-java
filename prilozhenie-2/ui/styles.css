@@ -546,10 +546,6 @@ th.is-t {
     background: var(--sink-soft) !important;
 }
 
-th.is-contracted {
-    font-style: italic;
-}
-
 .legend {
     margin: -4px 0 0;
     color: var(--text-dim);
