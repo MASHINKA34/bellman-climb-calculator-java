@@ -1,37 +1,27 @@
 package ru.mashinka.multiflow.core.gomoryhu;
 
-// вершина сети на шаге: либо обычная вершина, либо стянутая часть (A, B, ...)
+// строка (и столбец) таблицы шага - одна вершина исходной сети
 public final class StepNode {
 
     private final String label;
     private final int[] members;
-    private final boolean contracted;
 
-    private StepNode(String label, int[] members, boolean contracted) {
+    private StepNode(String label, int[] members) {
         this.label = label;
         this.members = members.clone();
-        this.contracted = contracted;
     }
 
     static StepNode single(int vertex) {
-        return new StepNode(String.valueOf(vertex + 1), new int[]{vertex}, false);
+        return new StepNode(String.valueOf(vertex + 1), new int[]{vertex});
     }
 
-    static StepNode contracted(String label, int[] members) {
-        return new StepNode(label, members, true);
-    }
-
-    // подпись в таблице шага: номер вершины с единицы или буква стянутой части
+    // подпись в таблице шага: номер вершины с единицы
     public String getLabel() {
         return label;
     }
 
-    // исходные вершины, из которых состоит эта вершина шага (с нуля, по возрастанию)
+    // исходная вершина этой строки (с нуля), массивом из одного элемента
     public int[] getMembers() {
         return members.clone();
-    }
-
-    public boolean isContracted() {
-        return contracted;
     }
 }

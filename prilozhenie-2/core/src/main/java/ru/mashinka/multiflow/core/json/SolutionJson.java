@@ -73,13 +73,12 @@ public final class SolutionJson {
         json.name("t").value(step.getSink() + 1);
         json.name("group").vertices(step.getGroup());
 
-        // строки и столбцы таблицы шага; S - строка 0, T - строка 1
+        // строки и столбцы таблицы шага: все вершины 1..n по порядку; S - строка s - 1, T - строка t - 1
         json.name("nodes").beginArray();
         for (StepNode node : step.getNodes()) {
             json.beginObject()
                     .name("label").value(node.getLabel())
                     .name("members").vertices(node.getMembers())
-                    .name("contracted").value(node.isContracted())
                     .endObject();
         }
         json.endArray();

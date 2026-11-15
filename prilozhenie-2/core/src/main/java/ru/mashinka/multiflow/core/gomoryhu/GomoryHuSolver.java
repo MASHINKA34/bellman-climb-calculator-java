@@ -1,9 +1,7 @@
 package ru.mashinka.multiflow.core.gomoryhu;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.logging.Level;
@@ -16,10 +14,11 @@ import ru.mashinka.multiflow.core.log.CoreLog;
 import ru.mashinka.multiflow.core.network.Network;
 
 // многополюсный максимальный поток - дерево Гомори-Ху (Р. Гомори, Т. Ху, 1961)
+// без стягивания вершин, по способу Д. Гасфилда (1990)
 //
 // В начале дерево - одна группа со всеми вершинами. Каждый шаг берёт группу,
-// в которой больше одной вершины, выбирает в ней пару S и T, стягивает всё, что
-// лежит за пределами группы, считает максимальный поток S -> T и делит группу
+// в которой больше одной вершины, выбирает в ней пару S и T, считает максимальный
+// поток S -> T по всей исходной сети (таблица n x n, как на паре) и делит группу
 // разрезом надвое. Половины соединяет новая ветвь со значением потока.
 // n вершин - n-1 шагов: для сети 7 x 7 ровно 6 расчётов потока вместо 21.
 //
@@ -82,66 +81,16 @@ public class GomoryHuSolver {
         int source = group[0];
         int sink = group[1];
 
-        //#стягивание - всё, что висит на группе через одну ветвь дерева, сжимается в одну вершину
-        List<Integer> hangingEdges = new ArrayList<>();
-        List<int[]> parts = new ArrayList<>();
-        for (int e = 0; e < edges.size(); e++) {
-            GroupEdge edge = edges.get(e);
-            if (edge.touches(split)) {
-                hangingEdges.add(e);
-                parts.add(collectPart(groups, edges, edge.other(split), split));
-            }
-        }
-
-        // буквы A, B, C... раздаются по возрастанию самой маленькой вершины части
-        Integer[] order = new Integer[parts.size()];
-        for (int k = 0; k < order.length; k++) {
-            order[k] = k;
-        }
-        Arrays.sort(order, (x, y) -> Integer.compare(parts.get(x)[0], parts.get(y)[0]));
-
-        // вершины сети шага: сначала вершины группы (S - строка 0, T - строка 1), потом части
+        //#без-стягивания - таблица шага - вся исходная сеть, строки 1..n по порядку, как на паре
         List<StepNode> nodes = new ArrayList<>();
-        int[] nodeOf = new int[n];
-        Arrays.fill(nodeOf, -1);
-        for (int vertex : group) {
-            nodeOf[vertex] = nodes.size();
+        for (int vertex = 0; vertex < n; vertex++) {
             nodes.add(StepNode.single(vertex));
         }
-        for (int k = 0; k < order.length; k++) {
-            int[] members = parts.get(order[k]);
-            for (int vertex : members) {
-                nodeOf[vertex] = nodes.size();
-            }
-            nodes.add(StepNode.contracted(String.valueOf((char) ('A' + k)), members));
-        }
-        for (int vertex = 0; vertex < n; vertex++) {
-            if (nodeOf[vertex] == -1) {
-                // группы дерева всегда делят вершины без остатка; иначе это ошибка в коде
-                String message = "run=" + runId + " step " + index + ": vertex " + (vertex + 1)
-                        + " belongs to no node of the step network";
-                LOG.severe(message);
-                throw new IllegalStateException(message);
-            }
-        }
+        int size = n;
+        int[][] capacity = network.toMatrix();
 
-        // таблица шага: ветви, ведущие в одну стянутую часть, складываются
-        int size = nodes.size();
-        int[][] capacity = new int[size][size];
-        for (int u = 0; u < n; u++) {
-            for (int v = u + 1; v < n; v++) {
-                int c = network.capacity(u, v);
-                int a = nodeOf[u];
-                int b = nodeOf[v];
-                if (c > 0 && a != b) {
-                    capacity[a][b] += c;
-                    capacity[b][a] += c;
-                }
-            }
-        }
-
-        LOG.info(() -> String.format(Locale.ROOT, "run=%s step %d/%d: split group %s with S=%d T=%d, contracted %s",
-                runId, index, total, CoreLog.vertices(group), source + 1, sink + 1, describeContracted(nodes)));
+        LOG.info(() -> String.format(Locale.ROOT, "run=%s step %d/%d: split group %s with S=%d T=%d, full network %dx%d",
+                runId, index, total, CoreLog.vertices(group), source + 1, sink + 1, n, n));
         if (LOG.isLoggable(Level.FINE)) {
             for (int a = 0; a < size; a++) {
                 int row = a;
@@ -150,7 +99,7 @@ public class GomoryHuSolver {
             }
         }
 
-        FlowResult flow = MaxFlow.compute(capacity, 0, 1);
+        FlowResult flow = MaxFlow.compute(capacity, source, sink);
 
         if (LOG.isLoggable(Level.FINE)) {
             List<AugmentingPath> paths = flow.getPaths();
@@ -191,13 +140,13 @@ public class GomoryHuSolver {
                         + ": " + Arrays.toString(branchFlow[row]));
             }
         }
-        checkBalance(branchFlow, flow.getValue(), nodes, index, runId);
+        checkBalance(branchFlow, flow.getValue(), source, sink, nodes, index, runId);
         int branchesWithFlow = loaded;
 
-        // разрез переводим обратно в исходные вершины: стянутая часть целиком на одной стороне
+        // сторона S разреза - вершины, до которых от S можно дойти по ненулевым клеткам R - Xst
         boolean[] onSourceSide = new boolean[n];
         for (int vertex = 0; vertex < n; vertex++) {
-            onSourceSide[vertex] = flow.isOnSourceSide(nodeOf[vertex]);
+            onSourceSide[vertex] = flow.isOnSourceSide(vertex);
         }
         int[] sourceSide = select(allVertices(n), onSourceSide, true);
         int[] sinkSide = select(allVertices(n), onSourceSide, false);
@@ -230,24 +179,38 @@ public class GomoryHuSolver {
         groups.add(sinkPart);
         int sinkGroup = groups.size() - 1;
 
-        //#перевешивание - ветвь к стянутой части остаётся у той половины группы,
-        // на чьей стороне разреза оказалась эта часть
-        for (int k = 0; k < hangingEdges.size(); k++) {
-            int e = hangingEdges.get(k);
-            if (!onSourceSide[parts.get(k)[0]]) {
-                edges.set(e, edges.get(e).reattach(split, sinkGroup));
+        //#перевешивание (Гасфилд) - соседняя группа, висевшая на делимой, остаётся у той половины,
+        // на чьей стороне разреза лежит её первая (самая маленькая) вершина. Эта вершина уже была
+        // S или T на прошлом шаге, поэтому по ней и решается, куда идёт вся соседняя часть
+        int moved = 0;
+        for (int e = 0; e < edges.size(); e++) {
+            GroupEdge edge = edges.get(e);
+            if (!edge.touches(split)) {
+                continue;
             }
+            int neighbour = edge.other(split);
+            int anchor = groups.get(neighbour)[0];
+            boolean toSink = !onSourceSide[anchor];
+            if (toSink) {
+                edges.set(e, edge.reattach(split, sinkGroup));
+                moved++;
+            }
+            LOG.fine(() -> String.format(Locale.ROOT,
+                    "run=%s step %d: branch to group %s (value %d) stays with %s side, anchor vertex %d",
+                    runId, index, CoreLog.vertices(groups.get(neighbour)), edge.getValue(),
+                    toSink ? "T" : "S", anchor + 1));
         }
+        int movedBranches = moved;
         edges.add(new GroupEdge(split, sinkGroup, flow.getValue(), index));
         GroupTree treeAfter = new GroupTree(groups, edges, edges.size() - 1);
 
         long elapsed = System.nanoTime() - startedAt;
         LOG.info(() -> String.format(Locale.ROOT,
                 "run=%s step %d/%d done: max flow %d->%d = %d via %d paths, flow on %d branches, cut %s | %s (%s), "
-                        + "new branch %s - %s = %d, %s",
+                        + "new branch %s - %s = %d, %d old branches moved to T half, %s",
                 runId, index, total, source + 1, sink + 1, flow.getValue(), flow.getPaths().size(), branchesWithFlow,
                 CoreLog.vertices(sourceSide), CoreLog.vertices(sinkSide), describeCut(cutEdges),
-                CoreLog.vertices(sourcePart), CoreLog.vertices(sinkPart), flow.getValue(),
+                CoreLog.vertices(sourcePart), CoreLog.vertices(sinkPart), flow.getValue(), movedBranches,
                 CoreLog.millis(elapsed)));
         if (flow.getValue() == 0) {
             LOG.warning(() -> String.format(Locale.ROOT,
@@ -261,9 +224,10 @@ public class GomoryHuSolver {
                 treeAfter, elapsed);
     }
 
-    // баланс Xst: из S (строка 0) выходит ровно поток, в T (строка 1) ровно поток входит,
+    // баланс Xst: из S выходит ровно поток, в T ровно поток входит,
     // в остальных вершинах сколько вошло, столько и вышло. Иначе ошибка в коде, а не в данных
-    private static void checkBalance(int[][] branchFlow, int value, List<StepNode> nodes, int index, String runId) {
+    private static void checkBalance(int[][] branchFlow, int value, int source, int sink, List<StepNode> nodes,
+                                     int index, String runId) {
         for (int a = 0; a < branchFlow.length; a++) {
             long sum = 0;
             for (int b = 0; b < branchFlow.length; b++) {
@@ -276,7 +240,7 @@ public class GomoryHuSolver {
                     throw new IllegalStateException(message);
                 }
             }
-            long expected = a == 0 ? value : a == 1 ? -value : 0;
+            long expected = a == source ? value : a == sink ? -value : 0;
             if (sum != expected) {
                 String message = "run=" + runId + " step " + index + ": xst row " + nodes.get(a).getLabel()
                         + " sums to " + sum + ", expected " + expected + " (max flow " + value + ")";
@@ -298,39 +262,6 @@ public class GomoryHuSolver {
             throw new IllegalStateException("no group with two or more vertices is left to split");
         }
         return best;
-    }
-
-    // все вершины части дерева, висящей на ветви: обходим группы, не заходя в делимую
-    private static int[] collectPart(List<int[]> groups, List<GroupEdge> edges, int start, int excluded) {
-        boolean[] seen = new boolean[groups.size()];
-        seen[excluded] = true;
-        seen[start] = true;
-        Deque<Integer> stack = new ArrayDeque<>();
-        stack.push(start);
-
-        List<Integer> vertices = new ArrayList<>();
-        while (!stack.isEmpty()) {
-            int current = stack.pop();
-            for (int vertex : groups.get(current)) {
-                vertices.add(vertex);
-            }
-            for (GroupEdge edge : edges) {
-                if (edge.touches(current)) {
-                    int next = edge.other(current);
-                    if (!seen[next]) {
-                        seen[next] = true;
-                        stack.push(next);
-                    }
-                }
-            }
-        }
-
-        int[] result = new int[vertices.size()];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = vertices.get(i);
-        }
-        Arrays.sort(result);
-        return result;
     }
 
     // ------------------------------------------------------------------ итог
@@ -415,19 +346,6 @@ public class GomoryHuSolver {
             text.append(CoreLog.vertices(part));
         }
         return text.toString();
-    }
-
-    private static String describeContracted(List<StepNode> nodes) {
-        StringBuilder text = new StringBuilder();
-        for (StepNode node : nodes) {
-            if (node.isContracted()) {
-                if (text.length() > 0) {
-                    text.append(", ");
-                }
-                text.append(node.getLabel()).append('=').append(CoreLog.vertices(node.getMembers()));
-            }
-        }
-        return text.length() == 0 ? "nothing" : text.toString();
     }
 
     private static String describePath(AugmentingPath path, List<StepNode> nodes) {
