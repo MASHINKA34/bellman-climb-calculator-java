@@ -51,6 +51,15 @@ class SolutionJsonTest {
         assertEquals(12, residual.get(2).get(0).asInt(), "3-1: 9 + 3");
         assertEquals(1, residual.get(5).get(1).asInt(), "6-2: 5 - 4");
 
+        // Xst того же шага: по направлению потока плюс, в обратную клетку минус
+        JsonNode xst = first.get("branchFlow");
+        assertEquals(7, xst.size());
+        assertEquals(2, xst.get(0).get(1).asInt(), "1-2: +2");
+        assertEquals(-2, xst.get(1).get(0).asInt(), "2-1: -2");
+        assertEquals(3, xst.get(3).get(1).asInt(), "4-2: +3");
+        assertEquals(-4, xst.get(4).get(0).asInt(), "5-1: -4");
+        assertEquals(0, xst.get(6).get(3).asInt(), "через 7 поток не идёт");
+
         // таблица в JSON - та же, что в решении, только вершины считаются с единицы
         JsonNode table = root.get("table");
         for (int i = 0; i < 7; i++) {

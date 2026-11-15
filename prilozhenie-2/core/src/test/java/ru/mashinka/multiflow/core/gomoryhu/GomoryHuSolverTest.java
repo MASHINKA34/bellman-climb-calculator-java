@@ -237,6 +237,45 @@ class GomoryHuSolverTest {
             assertEquals(contains(step.getSourceSide(), node.getMembers()[0]), seen[a],
                     where + ": вершина шага " + node.getLabel() + " и сторона разреза");
         }
+        checkBranchFlow(step, where);
+    }
+
+    // Xst: R - Xst клетка в клетку даёт таблицу после вычитания, Xst(i,j) = -Xst(j,i),
+    // поток по ветви не больше её пропускной способности, из S выходит поток, в T входит,
+    // в остальных вершинах сколько вошло, столько и вышло
+    private static void checkBranchFlow(Step step, String where) {
+        int[][] capacity = step.getCapacity();
+        int[][] residual = step.getResidual();
+        int[][] xst = step.getBranchFlow();
+        for (int a = 0; a < xst.length; a++) {
+            String label = step.getNodes().get(a).getLabel();
+            int sum = 0;
+            for (int b = 0; b < xst.length; b++) {
+                String cell = where + ": Xst(" + label + "," + step.getNodes().get(b).getLabel() + ")";
+                assertEquals(residual[a][b], capacity[a][b] - xst[a][b], cell + ": R - Xst");
+                assertEquals(-xst[b][a], xst[a][b], cell + ": обратная клетка с минусом");
+                assertTrue(Math.abs(xst[a][b]) <= capacity[a][b], cell + ": не больше пропускной способности");
+                sum += xst[a][b];
+            }
+            int expected = a == 0 ? step.getMaxFlow() : a == 1 ? -step.getMaxFlow() : 0;
+            assertEquals(expected, sum, where + ": баланс строки " + label);
+        }
+    }
+
+    // Xst на шаге 1 примера: пути 1-2 (+2), 1-3-4-2 (+3), 1-5-6-2 (+4)
+    @Test
+    void exampleFirstStepBranchFlow() {
+        MultiFlowSolution solution = new GomoryHuSolver().solve(Network.of(Examples.defaultNetwork()), "test-xst");
+        int[][] expected = {
+                {0, 2, 3, 0, 4, 0, 0},
+                {-2, 0, 0, -3, 0, -4, 0},
+                {-3, 0, 0, 3, 0, 0, 0},
+                {0, 3, -3, 0, 0, 0, 0},
+                {-4, 0, 0, 0, 0, 4, 0},
+                {0, 4, 0, 0, -4, 0, 0},
+                {0, 0, 0, 0, 0, 0, 0},
+        };
+        assertTablesEqual(expected, solution.getSteps().get(0).getBranchFlow());
     }
 
     // каждая ветвь дерева - минимальный разрез между своими концами (свойство дерева Гомори-Ху)
