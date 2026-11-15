@@ -482,6 +482,25 @@ table.final {
     margin: 0 auto;
 }
 
+/* обозначения R, Xst в заголовках шага: заголовки заглавными, а обозначение - как на доске */
+.nota {
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.nota sub {
+    font-size: 0.75em;
+}
+
+/* Xst - потоки по ветвям: по направлению потока жирным, обратные клетки с минусом бледнее */
+table.xst td.forward {
+    font-weight: 650;
+}
+
+table.xst td.backward {
+    color: var(--text-dim);
+}
+
 /* таблица после вычитания потоков: клетки, которые поменяли пути */
 table.residual td.changed {
     background: var(--accent-soft);

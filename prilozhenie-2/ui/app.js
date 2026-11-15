@@ -14,6 +14,12 @@ const MIN_SIZE = 3;
 const MAX_SIZE = 10;
 const DEFAULT_SIZE = 7;
 const MAX_CAPACITY = 1000000;
+
+// обозначения таблиц шага как на доске: X с нижним индексом st. Заголовки шага пишутся
+// заглавными - класс nota оставляет обозначение как есть, иначе вышло бы «XST»
+const XST = '<span class="nota">X<sub>st</sub></span>';
+const R_XST = '<span class="nota">R - X<sub>st</sub></span>';
+const R_NOTA = '<span class="nota">R</span>';
 const STORAGE_KEY = 'multiflow.input.v1';
 
 /* ============================ логи ============================ */
@@ -759,10 +765,12 @@ function stepsCard(result) {
     let html = '<section class="card" id="sec-steps"><h2>Шаги: ' + count + '</h2><div class="card-body">'
         + '<p class="hint">На каждом шаге берётся пара вершин S и T из ещё не разделённой группы. Всё, что лежит '
         + 'за пределами группы, стягивается в одну вершину. Поток считается методом Форда-Фалкерсона: пути '
-        + 'от S к T ищутся, пока они не исчерпаются. Таблица после вычитания потоков показывает, какие '
-        + 'ветви насыщены, - по ней виден разрез. Разрез делит группу надвое, половины соединяет новая '
-        + 'ветвь дерева, а найденный поток вписывается в итоговую таблицу. После последнего шага остальные '
-        + 'пары таблицы заполняются по дереву.</p>'
+        + 'от S к T ищутся, пока они не исчерпаются. На шаге три таблицы: ' + R_NOTA + ' - сеть шага, ' + XST
+        + ' - потоки по ветвям, ' + R_XST + ' - что осталось после вычитания потоков; по ней видно, '
+        + 'какие ветви насыщены, - это разрез. Разрез делит группу надвое, половины соединяет новая ветвь '
+        + 'дерева, а найденный поток '
+        + 'вписывается в итоговую таблицу. После последнего шага остальные пары таблицы заполняются по '
+        + 'дереву.</p>'
         + summaryTable(result.steps)
         + '<div class="steps-toolbar"><button type="button" class="btn-ghost btn-small" id="btn-expand">'
         + 'Развернуть все шаги</button></div>';
@@ -805,18 +813,21 @@ function stepDetails(step, result) {
         + '<span class="step-flow">поток ' + step.maxFlow + '</span>'
         + '</summary><div class="step-body">';
 
+    // порядок как на доске: R, пути, Xst, R - Xst, затем 1) поток, 2) разрез, 3) ветвь дерева
     html += '<p>Делим группу ' + setText(step.group) + '. ' + contraction + '</p>';
-    html += '<h4>Таблица сети на шаге</h4>' + stepMatrix(step);
+    html += '<h4>' + R_NOTA + ' - таблица сети на шаге</h4>' + stepMatrix(step);
     html += '<h4>Пути от S к T, пока не исчерпаются</h4>' + pathsList(step);
+    html += '<h4>' + XST + ' - потоки по ветвям</h4>' + flowMatrix(step);
+    html += '<h4>' + R_XST + ' - после вычитания потоков</h4>' + residualMatrix(step);
 
     const sum = step.paths.length > 1
         ? ' = ' + step.paths.map(function (path) {
             return path.amount;
         }).join(' + ')
         : '';
-    html += '<p class="result-line">Максимальный поток ' + step.s + ' → ' + step.t + sum
+    html += '<h4>1) Максимальный поток S → T</h4>'
+        + '<p class="result-line">Максимальный поток ' + step.s + ' → ' + step.t + sum
         + ' = <b>' + step.maxFlow + '</b></p>';
-    html += '<h4>Таблица после вычитания потоков</h4>' + residualMatrix(step);
 
     // сеть неориентированная: ветвь записывается меньшим номером вперёд, как клетка
     // над диагональю, куда матрицу и вводят, - (2,6), а не (6,2)
@@ -825,7 +836,7 @@ function stepDetails(step, result) {
     }).sort(function (x, y) {
         return x.a - y.a || x.b - y.b;
     });
-    html += '<h4>Разрез, разделяющий S и T</h4>'
+    html += '<h4>2) Разрез S | T</h4>'
         + '<p class="cut"><span class="side-s">' + setText(step.sourceSide) + '</span>'
         + ' <span class="cut-bar">|</span> <span class="side-t">' + setText(step.sinkSide) + '</span></p>';
     html += '<p>Ветви разреза: ' + (cutPairs.length
@@ -834,7 +845,7 @@ function stepDetails(step, result) {
         }).join(', ') + '; сумма <b>' + step.maxFlow + '</b> - равна потоку.'
         : 'нет: стороны ничем не связаны, сумма 0.') + '</p>';
 
-    html += '<h4>Новая ветвь дерева</h4><p>' + setText(step.sourcePart) + ' - ' + setText(step.sinkPart)
+    html += '<h4>3) Ветвь дерева</h4><p>' + setText(step.sourcePart) + ' - ' + setText(step.sinkPart)
         + ': <b>' + step.maxFlow + '</b></p>';
     html += '<h4>Дерево после шага</h4><div class="figure">' + drawGroupTree(step.tree) + '</div>';
     html += '<h4>Итоговая таблица после шага ' + step.index + '</h4>' + progressTable(result, step.index);
@@ -937,7 +948,61 @@ function stepMatrix(step) {
     return html;
 }
 
-// таблица шага после того, как пути исчерпаны, - как в табличном методе на бумаге:
+// Xst - потоки по ветвям, когда пути исчерпаны: по направлению потока +f, в обратную клетку -f,
+// поэтому R - Xst клетка в клетку даёт следующую таблицу. Таблица приходит из ядра
+// (step.branchFlow), здесь вывод и строка проверки: из S выходит ровно найденный поток
+function flowMatrix(step) {
+    const nodes = step.nodes;
+    const xst = step.branchFlow;
+    if (!Array.isArray(xst)) {
+        log.error('step came without branchFlow table', {step: step.index, keys: Object.keys(step)});
+        return '<div class="message error">Таблица ' + XST + ' не пришла из ядра.</div>';
+    }
+    let html = '<div class="table-scroll"><table class="data matrix-view xst"><thead><tr><th></th>';
+    nodes.forEach(function (node, index) {
+        html += '<th class="' + stepHeaderClass(nodes, index) + '">' + escapeHtml(node.label) + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    xst.forEach(function (row, a) {
+        html += '<tr><th class="' + stepHeaderClass(nodes, a) + '">' + escapeHtml(nodes[a].label) + '</th>';
+        row.forEach(function (value, b) {
+            if (a === b) {
+                html += '<td class="diag">-</td>';
+            } else if (!value) {
+                html += '<td class="zero">·</td>';
+            } else {
+                html += '<td class="' + (value > 0 ? 'forward' : 'backward') + '">' + value + '</td>';
+            }
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // строка S - нулевая: что из неё выходит, то и есть поток шага
+    const out = xst[0].filter(function (value, b) {
+        return b !== 0 && value !== 0;
+    });
+    const total = out.reduce(function (acc, value) {
+        return acc + value;
+    }, 0);
+    if (total !== step.maxFlow) {
+        log.error('xst row S does not sum to max flow', {step: step.index, sum: total, maxFlow: step.maxFlow});
+    }
+    let check;
+    if (!out.length) {
+        check = 'Из S поток не выходит: путей не было.';
+    } else {
+        const terms = out.map(function (value) {
+            return value < 0 ? '(' + value + ')' : String(value);
+        });
+        check = 'Из S выходит ' + (terms.length > 1 ? terms.join(' + ') + ' = ' : '') + '<b>' + total + '</b>'
+            + (total === step.maxFlow ? ' - равно потоку.' : ' - не равно потоку ' + step.maxFlow + '.');
+    }
+    return html + '<p class="legend">По направлению потока +f, в обратную клетку -f; точка - потока нет. '
+        + check + '</p>';
+}
+
+// R - Xst: таблица шага после того, как пути исчерпаны, - как в табличном методе на бумаге:
 // по каждой ветви пути из c(i,j) вычтен пропущенный поток, к c(j,i) прибавлен.
 // Сама таблица приходит из ядра (step.residual), здесь только вывод
 function residualMatrix(step) {
@@ -970,10 +1035,29 @@ function residualMatrix(step) {
         return escapeHtml(node.label);
     });
     html += '<p class="legend">' + (step.paths.length
-        ? 'Выделены клетки, которые поменяли пути: из c(i,j) вычтен поток, к c(j,i) прибавлен. '
-        : 'Путей не было - таблица не изменилась. ')
+        ? 'Из каждой клетки ' + R_NOTA + ' вычтена клетка ' + XST + subtractionExample(step) + '. Выделены клетки, которые '
+            + 'изменились. '
+        : 'Путей не было - ' + XST + ' пустая, таблица не изменилась. ')
         + 'От S по ненулевым клеткам достижимы: ' + reachable.join(', ') + ' - это сторона S разреза.</p>';
     return html;
+}
+
+// пример вычитания для подписи под R - Xst: первая клетка с минусом в Xst - на ней видно,
+// что минус на минус даёт плюс и обратная клетка растёт
+function subtractionExample(step) {
+    const xst = step.branchFlow;
+    if (!Array.isArray(xst)) {
+        return '';
+    }
+    for (let a = 0; a < xst.length; a++) {
+        for (let b = 0; b < xst.length; b++) {
+            if (xst[a][b] < 0) {
+                return ', например (' + escapeHtml(step.nodes[a].label) + ',' + escapeHtml(step.nodes[b].label)
+                    + '): ' + step.capacities[a][b] + ' - (' + xst[a][b] + ') = ' + step.residual[a][b];
+            }
+        }
+    }
+    return '';
 }
 
 function pathsList(step) {
