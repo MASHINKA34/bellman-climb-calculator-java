@@ -172,6 +172,28 @@ public class GomoryHuSolver {
             }
         }
 
+        //#xst - потоки по ветвям: Xst = R - (R - Xst). По направлению потока +f, в обратную клетку -f,
+        // поэтому таблица после вычитания - ровно R минус Xst клетка в клетку
+        int[][] branchFlow = new int[size][size];
+        int loaded = 0;
+        for (int a = 0; a < size; a++) {
+            for (int b = 0; b < size; b++) {
+                branchFlow[a][b] = capacity[a][b] - residual[a][b];
+                if (branchFlow[a][b] > 0) {
+                    loaded++;
+                }
+            }
+        }
+        if (LOG.isLoggable(Level.FINE)) {
+            for (int a = 0; a < size; a++) {
+                int row = a;
+                LOG.fine(() -> "run=" + runId + " step " + index + " xst row " + nodes.get(row).getLabel()
+                        + ": " + Arrays.toString(branchFlow[row]));
+            }
+        }
+        checkBalance(branchFlow, flow.getValue(), nodes, index, runId);
+        int branchesWithFlow = loaded;
+
         // разрез переводим обратно в исходные вершины: стянутая часть целиком на одной стороне
         boolean[] onSourceSide = new boolean[n];
         for (int vertex = 0; vertex < n; vertex++) {
@@ -221,8 +243,9 @@ public class GomoryHuSolver {
 
         long elapsed = System.nanoTime() - startedAt;
         LOG.info(() -> String.format(Locale.ROOT,
-                "run=%s step %d/%d done: max flow %d->%d = %d via %d paths, cut %s | %s (%s), new branch %s - %s = %d, %s",
-                runId, index, total, source + 1, sink + 1, flow.getValue(), flow.getPaths().size(),
+                "run=%s step %d/%d done: max flow %d->%d = %d via %d paths, flow on %d branches, cut %s | %s (%s), "
+                        + "new branch %s - %s = %d, %s",
+                runId, index, total, source + 1, sink + 1, flow.getValue(), flow.getPaths().size(), branchesWithFlow,
                 CoreLog.vertices(sourceSide), CoreLog.vertices(sinkSide), describeCut(cutEdges),
                 CoreLog.vertices(sourcePart), CoreLog.vertices(sinkPart), flow.getValue(),
                 CoreLog.millis(elapsed)));
@@ -233,9 +256,34 @@ public class GomoryHuSolver {
                     runId, index, total, source + 1, sink + 1));
         }
 
-        return new Step(index, total, source, sink, group, nodes, capacity, residual, flow.getPaths(),
+        return new Step(index, total, source, sink, group, nodes, capacity, branchFlow, residual, flow.getPaths(),
                 flow.getValue(), sourceSide, sinkSide, cutEdges, sourcePart, sinkPart,
                 treeAfter, elapsed);
+    }
+
+    // баланс Xst: из S (строка 0) выходит ровно поток, в T (строка 1) ровно поток входит,
+    // в остальных вершинах сколько вошло, столько и вышло. Иначе ошибка в коде, а не в данных
+    private static void checkBalance(int[][] branchFlow, int value, List<StepNode> nodes, int index, String runId) {
+        for (int a = 0; a < branchFlow.length; a++) {
+            long sum = 0;
+            for (int b = 0; b < branchFlow.length; b++) {
+                sum += branchFlow[a][b];
+                if (branchFlow[a][b] != -branchFlow[b][a]) {
+                    String message = "run=" + runId + " step " + index + ": xst is not antisymmetric at "
+                            + nodes.get(a).getLabel() + "," + nodes.get(b).getLabel() + ": " + branchFlow[a][b]
+                            + " vs " + branchFlow[b][a];
+                    LOG.severe(message);
+                    throw new IllegalStateException(message);
+                }
+            }
+            long expected = a == 0 ? value : a == 1 ? -value : 0;
+            if (sum != expected) {
+                String message = "run=" + runId + " step " + index + ": xst row " + nodes.get(a).getLabel()
+                        + " sums to " + sum + ", expected " + expected + " (max flow " + value + ")";
+                LOG.severe(message);
+                throw new IllegalStateException(message);
+            }
+        }
     }
 
     private static int chooseGroup(List<int[]> groups) {

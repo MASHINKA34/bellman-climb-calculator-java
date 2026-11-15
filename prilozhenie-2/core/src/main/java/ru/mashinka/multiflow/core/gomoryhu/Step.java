@@ -17,6 +17,7 @@ public final class Step {
     private final int[] group;
     private final List<StepNode> nodes;
     private final int[][] capacity;
+    private final int[][] branchFlow;
     private final int[][] residual;
     private final List<AugmentingPath> paths;
     private final int maxFlow;
@@ -29,7 +30,7 @@ public final class Step {
     private final long elapsedNanos;
 
     Step(int index, int total, int source, int sink, int[] group, List<StepNode> nodes,
-         int[][] capacity, int[][] residual, List<AugmentingPath> paths, int maxFlow,
+         int[][] capacity, int[][] branchFlow, int[][] residual, List<AugmentingPath> paths, int maxFlow,
          int[] sourceSide, int[] sinkSide, List<CutEdge> cutEdges,
          int[] sourcePart, int[] sinkPart, GroupTree treeAfter, long elapsedNanos) {
         this.index = index;
@@ -39,6 +40,7 @@ public final class Step {
         this.group = group.clone();
         this.nodes = Collections.unmodifiableList(nodes);
         this.capacity = capacity;
+        this.branchFlow = branchFlow;
         this.residual = residual;
         this.paths = Collections.unmodifiableList(paths);
         this.maxFlow = maxFlow;
@@ -90,7 +92,18 @@ public final class Step {
         return copy;
     }
 
-    // та же таблица после того, как пути исчерпаны, - как в табличном методе на бумаге:
+    // Xst - сколько потока идёт по каждой ветви, когда пути исчерпаны: по направлению потока +f,
+    // в обратную клетку -f. Поэтому таблица после вычитания - это R - Xst клетка в клетку.
+    // Сумма строки S равна потоку, строки T - потоку с минусом, остальных строк - нулю
+    public int[][] getBranchFlow() {
+        int[][] copy = new int[branchFlow.length][];
+        for (int i = 0; i < branchFlow.length; i++) {
+            copy[i] = branchFlow[i].clone();
+        }
+        return copy;
+    }
+
+    // R - Xst: та же таблица после того, как пути исчерпаны, - как в табличном методе на бумаге:
     // по каждой ветви пути из c(i,j) вычтен пропущенный поток, к c(j,i) прибавлен.
     // Нули на ветвях из стороны S в сторону T - насыщенные ветви, они и дают разрез
     public int[][] getResidual() {
