@@ -67,6 +67,9 @@ function createLogger(module) {
         }
         const sink = console[level] || console.log;
         sink.call(console, line);
+        if (level === 'warn' || level === 'error') {
+            reportToServer(level, module, message, context ? formatContext(context) : '');
+        }
     }
 
     return {
@@ -83,6 +86,39 @@ function createLogger(module) {
             write('error', message, context);
         }
     };
+}
+
+// на сайте предупреждения и ошибки страницы уходят в журнал сервера (api/client-log):
+// консоль Safari на чужом айфоне не посмотреть. В приложении это не нужно - там logcat.
+// Не больше 20 записей за открытие страницы; сбой отправки только в консоль, без повтора,
+// иначе ошибка отправки сама порождала бы новые отправки
+const REPORT_LIMIT = 20;
+let reportsSent = 0;
+
+function reportToServer(level, module, message, contextText) {
+    if (typeof MultiFlowBridge !== 'undefined' || reportsSent >= REPORT_LIMIT || !window.fetch) {
+        return;
+    }
+    reportsSent += 1;
+    const body = JSON.stringify({
+        level: level,
+        module: module,
+        message: message,
+        context: contextText + (reportsSent === REPORT_LIMIT ? ' (limit reached, next reports dropped)' : ''),
+        page: window.location.pathname + window.location.search
+    });
+    try {
+        fetch('api/client-log', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: body,
+            keepalive: true
+        }).catch(function (error) {
+            console.warn('page log was not delivered to the server: ' + describeError(error));
+        });
+    } catch (error) {
+        console.warn('page log was not delivered to the server: ' + describeError(error));
+    }
 }
 
 function timestamp() {

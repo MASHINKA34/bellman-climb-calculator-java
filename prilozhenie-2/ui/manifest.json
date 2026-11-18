@@ -1,0 +1,18 @@
+{
+  "name": "Многополюсный поток",
+  "short_name": "Многополюсный поток",
+  "description": "Многополюсный максимальный поток (дерево Гомори-Ху) и размещение производства венгерским методом",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#0E5F63",
+  "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
