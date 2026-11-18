@@ -1,0 +1,33 @@
+server:
+  # на сервере перед сайтом стоит nginx (https), сам сайт слушает только локальный адрес.
+  # Для проверки на компьютере: SERVER_ADDRESS=0.0.0.0 - тогда сайт виден и с телефона в той же сети
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:8091}
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,application/javascript,application/json
+    min-response-size: 1024
+  # ответ об ошибке Spring без стека и подробностей: они уходят только в журнал
+  error:
+    include-stacktrace: never
+    include-message: never
+
+spring:
+  application:
+    name: multiflow-web
+  main:
+    banner-mode: off
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          # страница меняется вместе с выкладкой - браузер каждый раз сверяется с сервером
+          no-cache: true
+
+logging:
+  level:
+    # LOG_LEVEL: debug / info / warn / error; по умолчанию info
+    root: ${LOG_LEVEL:info}
+  pattern:
+    # время с мс, уровень, модуль, номер запроса, сообщение; дальше стек, если есть
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%logger{36}] rid=%X{rid:--} %msg%n%wEx"
