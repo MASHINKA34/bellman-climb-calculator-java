@@ -10,7 +10,9 @@ public enum PhotoTarget {
     // издержки сбыта: виды x предприятия
     SALES("sales"),
     // план: для каждого вида объём и цена - два столбца
-    PLAN("plan");
+    PLAN("plan"),
+    // вкладка «Транспортная»: тарифы, справа столбец запасов, снизу строка потребностей
+    TRANSPORT("transport");
 
     private final String id;
 

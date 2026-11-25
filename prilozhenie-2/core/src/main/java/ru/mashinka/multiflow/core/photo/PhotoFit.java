@@ -11,7 +11,8 @@ import java.util.logging.Logger;
 //   2. размер проверяется по правилам вкладки;
 //   3. «Поток»: матрица симметричная, поэтому клетки сверяются с зеркальными - нераспознанная
 //      берётся из пары, разные числа в паре отмечаются;
-//   4. «Размещение»: пустая клетка - не распознана, её надо заполнить вручную.
+//   4. «Размещение»: пустая клетка - не распознана, её надо заполнить вручную;
+//   5. «Транспортная»: правый столбец - запасы, нижняя строка - потребности, угол пустой.
 public class PhotoFit {
 
     private static final Logger LOG = Logger.getLogger(PhotoFit.class.getName());
@@ -55,6 +56,9 @@ public class PhotoFit {
                 break;
             case PLAN:
                 result = fitPlan(table, top, left, rows, columns, notes, scanId);
+                break;
+            case TRANSPORT:
+                result = fitTransport(table, top, left, rows, columns, notes, scanId);
                 break;
             default:
                 result = fitCosts(table, target, top, left, rows, columns, notes, scanId);
@@ -180,6 +184,38 @@ public class PhotoFit {
                     + MAX_SIZE + ", а распознано " + rows + ".", notes);
         }
         return fill(table, PhotoTarget.PLAN, top, left, rows, columns, notes);
+    }
+
+    // ------------------------------------------------------------------ «Транспортная»
+
+    // таблица снимается целиком, как в задании: тарифы m x n, справа запасы, снизу потребности
+    private PhotoResult fitTransport(ScannedTable table, int top, int left, int rows, int columns, List<String> notes,
+                                     String scanId) {
+        if (rows < MIN_SIZE + 1 || rows > MAX_SIZE + 1) {
+            return fail(PhotoTarget.TRANSPORT, scanId, "Строк должно быть от " + (MIN_SIZE + 1) + " до "
+                    + (MAX_SIZE + 1) + " вместе с нижней строкой потребностей, а распознано " + rows
+                    + ". Снимите таблицу целиком: тарифы, справа запасы, снизу потребности.", notes);
+        }
+        if (columns < MIN_SIZE + 1 || columns > MAX_SIZE + 1) {
+            return fail(PhotoTarget.TRANSPORT, scanId, "Столбцов должно быть от " + (MIN_SIZE + 1) + " до "
+                    + (MAX_SIZE + 1) + " вместе с правым столбцом запасов, а распознано " + columns
+                    + ". Снимите таблицу целиком: тарифы, справа запасы, снизу потребности.", notes);
+        }
+        int lastRow = rows - 1;
+        int lastColumn = columns - 1;
+        PhotoResult filled = fill(table, PhotoTarget.TRANSPORT, top, left, rows, columns, notes);
+        String[][] values = filled.getValues();
+        int[][] flags = filled.getFlags();
+        int recognized = filled.getRecognized();
+        //#угол - на пересечении запасов и потребностей числа нет; если нашлось, оно не подставляется
+        if (values[lastRow][lastColumn] != null) {
+            recognized--;
+            notes.add("В правом нижнем углу найдено число " + values[lastRow][lastColumn] + ", оно не подставляется. "
+                    + "Проверьте, что правый столбец - запасы, а нижняя строка - потребности.");
+        }
+        values[lastRow][lastColumn] = null;
+        flags[lastRow][lastColumn] = PhotoResult.OK;
+        return PhotoResult.success(PhotoTarget.TRANSPORT, values, flags, recognized, rows * columns - 1, notes);
     }
 
     private static PhotoResult fill(ScannedTable table, PhotoTarget target, int top, int left, int rows, int columns,

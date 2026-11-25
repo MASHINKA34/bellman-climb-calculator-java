@@ -85,6 +85,18 @@ public class TableScanner {
         double centerY() {
             return (top + bottom) / 2.0;
         }
+
+        long area() {
+            return (long) Math.max(1, right - left) * height();
+        }
+
+        // то же число на том же месте
+        boolean sameAs(Item other) {
+            long width = Math.min(right, other.right) - Math.max(left, other.left);
+            long tall = Math.min(bottom, other.bottom) - Math.max(top, other.top);
+            return text.equals(other.text) && dash == other.dash && width > 0 && tall > 0
+                    && width * tall >= DOUBLE_OVERLAP * Math.min(area(), other.area());
+        }
     }
 
     //#главный - точка входа: слова с фото -> таблица
@@ -108,6 +120,10 @@ public class TableScanner {
             return ScannedTable.empty(tokens.size(), ignored);
         }
 
+        int doubles = dropDoubles(items);
+        if (doubles > 0) {
+            LOG.fine(() -> "scan=" + scanId + " dropped " + doubles + " numbers found twice at the same place");
+        }
         double height = medianHeight(items);
         List<String> notes = new ArrayList<>();
 
@@ -298,6 +314,22 @@ public class TableScanner {
             start++;
         }
         return digits.substring(start);
+    }
+
+    // два одинаковых числа на одном месте должны совпадать хотя бы на столько (доля меньшего)
+    static final double DOUBLE_OVERLAP = 0.6;
+
+    // распознавание иногда отдаёт одно и то же число дважды - отдельно и в составе слипшегося слова:
+    // остаётся то, у которого прямоугольник меньше
+    private static int dropDoubles(List<Item> items) {
+        int before = items.size();
+        for (int k = 0; k < items.size(); k++) {
+            Item item = items.get(k);
+            if (items.removeIf(other -> other != item && other.area() >= item.area() && item.sameAs(other))) {
+                k = -1;
+            }
+        }
+        return before - items.size();
     }
 
     // ------------------------------------------------------------------ строки и столбцы
