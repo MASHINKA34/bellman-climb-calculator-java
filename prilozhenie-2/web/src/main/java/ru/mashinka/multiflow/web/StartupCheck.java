@@ -1,5 +1,6 @@
 package ru.mashinka.multiflow.web;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -15,6 +16,8 @@ import ru.mashinka.multiflow.core.gomoryhu.GomoryHuSolver;
 import ru.mashinka.multiflow.core.gomoryhu.MultiFlowSolution;
 import ru.mashinka.multiflow.core.network.Examples;
 import ru.mashinka.multiflow.core.network.Network;
+import ru.mashinka.multiflow.web.access.AccessKey;
+import ru.mashinka.multiflow.web.access.KeyService;
 
 // после старта: версия, адрес и пробный расчёт встроенного примера.
 // Если ядро не считает, это видно в журнале сразу, а не на первом запросе пользователя
@@ -25,10 +28,12 @@ public class StartupCheck {
 
     private final Environment environment;
     private final ObjectProvider<BuildProperties> build;
+    private final KeyService keys;
 
-    public StartupCheck(Environment environment, ObjectProvider<BuildProperties> build) {
+    public StartupCheck(Environment environment, ObjectProvider<BuildProperties> build, KeyService keys) {
         this.environment = environment;
         this.build = build;
+        this.keys = keys;
     }
 
     // версия сайта из build-info (pom.xml, site.version); при запуске из IDE её может не быть
@@ -42,6 +47,11 @@ public class StartupCheck {
     public void ready() {
         log.info("multiflow web {} listening on {}:{}", version(build),
                 environment.getProperty("server.address", "0.0.0.0"), environment.getProperty("local.server.port"));
+
+        List<AccessKey> all = keys.list();
+        log.info("access keys: {} total, {} active, {} bound to a device", all.size(),
+                all.stream().filter(AccessKey::active).count(),
+                all.stream().filter(key -> key.device() != null).count());
 
         long startedAt = System.nanoTime();
         log.info("self-check: solving the built-in example");

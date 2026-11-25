@@ -1,3 +1,8 @@
 # Путь к Android SDK свой на каждой машине (build/, .gradle/, target/ и *.apk
 # уже исключены корневым .gitignore)
 android/local.properties
+# адрес и сертификат сервера ключей (пример - в README)
+android/server.properties
+android/*.crt
+# база ключей при запуске сайта на компьютере
+data/

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Ключи - Многополюсный поток</title>
+    <link rel="icon" type="image/png" href="/apple-touch-icon.png">
+    <!-- палитра и кнопки - те же, что у приложения -->
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div class="page">
+    <header class="masthead admin-head">
+        <div>
+            <h1>Ключи входа</h1>
+            <p id="sub">Многополюсный поток</p>
+        </div>
+        <button type="button" class="btn-ghost btn-small" id="btn-logout" hidden>Выйти</button>
+    </header>
+
+    <div class="message error" id="page-message" role="alert" hidden></div>
+
+    <!-- первый вход: придумать пароль -->
+    <form class="card" id="setup" autocomplete="on" hidden>
+        <h2>Придумайте пароль</h2>
+        <div class="card-body">
+            <p class="hint">Это пароль от админки, не короче 8 знаков. Он хранится на сервере только в виде хэша:
+                подсмотреть его нельзя, забытый придётся задать заново.</p>
+            <input type="text" name="username" value="admin" autocomplete="username" hidden>
+            <label class="field">Пароль
+                <input type="password" id="setup-password" autocomplete="new-password" minlength="8" maxlength="200"
+                       required></label>
+            <label class="field">Ещё раз
+                <input type="password" id="setup-repeat" autocomplete="new-password" minlength="8" maxlength="200"
+                       required></label>
+            <div class="message error" id="setup-message" role="alert" hidden></div>
+            <button type="submit" class="btn-primary">Сохранить и войти</button>
+        </div>
+    </form>
+
+    <!-- обычный вход -->
+    <form class="card" id="login" autocomplete="on" hidden>
+        <h2>Вход</h2>
+        <div class="card-body">
+            <input type="text" name="username" value="admin" autocomplete="username" hidden>
+            <label class="field">Пароль
+                <input type="password" id="login-password" autocomplete="current-password" maxlength="200"
+                       required></label>
+            <div class="message error" id="login-message" role="alert" hidden></div>
+            <button type="submit" class="btn-primary">Войти</button>
+        </div>
+    </form>
+
+    <main id="keys" hidden>
+        <form class="card" id="create">
+            <h2>Новый ключ</h2>
+            <div class="card-body">
+                <label class="field">Кому (видно только вам)
+                    <input type="text" id="create-label" maxlength="100" autocomplete="off"
+                           placeholder="например, Иван"></label>
+                <fieldset class="tabs-field">
+                    <legend>Доступ к вкладкам</legend>
+                    <label><input type="checkbox" value="flow" checked> Поток</label>
+                    <label><input type="checkbox" value="placement" checked> Размещение</label>
+                    <label><input type="checkbox" value="transport" checked> Транспортная</label>
+                </fieldset>
+                <div class="message error" id="create-message" role="alert" hidden></div>
+                <button type="submit" class="btn-primary">Создать ключ</button>
+                <div class="new-key" id="new-key" hidden></div>
+            </div>
+        </form>
+
+        <section class="card">
+            <h2>Все ключи <span class="muted" id="count"></span></h2>
+            <div class="card-body">
+                <div class="list-tools">
+                    <input type="search" id="search" placeholder="Поиск: кому, ключ, телефон" autocomplete="off"
+                           aria-label="Поиск по ключам">
+                    <button type="button" class="btn-ghost btn-small" id="btn-refresh">Обновить</button>
+                </div>
+                <div id="list"></div>
+            </div>
+        </section>
+    </main>
+</div>
+<script src="admin.js"></script>
+</body>
+</html>

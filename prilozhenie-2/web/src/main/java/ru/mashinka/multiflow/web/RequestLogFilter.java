@@ -56,9 +56,11 @@ public class RequestLogFilter extends OncePerRequestFilter {
     private static void logDone(HttpServletRequest request, int status, String path, boolean api, String client,
                                 long ms) {
         boolean page = "/".equals(path) || "/index.html".equals(path);
+        // удачная проверка ключа приходит раз в минуту с каждого устройства: в обычный журнал - только отказы
+        boolean routine = status == 200 && "/api/access/check".equals(path);
         if (status >= 500) {
             log.warn("{} {} -> {} in {} ms, client={}", request.getMethod(), path, status, ms, client);
-        } else if (api || page || status >= 400) {
+        } else if (!routine && (api || page || status >= 400)) {
             // открытие страницы - вместе с браузером: по нему видно, айфон это или нет
             log.info("{} {} -> {} in {} ms, client={}{}", request.getMethod(), path, status, ms, client,
                     page ? ", agent=" + agent(request) : "");

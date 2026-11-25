@@ -12,6 +12,10 @@ server:
     include-stacktrace: never
     include-message: never
 
+multiflow:
+  # папка с базой ключей. На сервере - /opt/multiflow/data (рабочая папка службы), выкладка её не трогает
+  data-dir: ${MULTIFLOW_DATA:data}
+
 spring:
   application:
     name: multiflow-web
@@ -28,6 +32,12 @@ logging:
   level:
     # LOG_LEVEL: debug / info / warn / error; по умолчанию info
     root: ${LOG_LEVEL:info}
+    # на debug Spring печатает тела запросов целиком, а в них ключи и пароль админки.
+    # Подробности наших классов (ru.mashinka) на debug остаются
+    org.springframework: info
+    org.apache: info
+    com.zaxxer: info
+    org.sqlite: info
   pattern:
     # время с мс, уровень, модуль, номер запроса, сообщение; дальше стек, если есть
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%logger{36}] rid=%X{rid:--} %msg%n%wEx"

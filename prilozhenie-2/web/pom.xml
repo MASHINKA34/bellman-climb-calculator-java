@@ -14,12 +14,13 @@
     <name>Multiflow Web</name>
     <description>
         Сайт: тот же экран, что в Android-приложении (папка ../ui), и тот же расчёт из core.
-        Страница зовёт api/example, api/solve, api/placement/* - здесь они отвечают по сети.
+        Страница зовёт api/example, api/solve, api/placement/*, api/transport/* - здесь они отвечают
+        по сети. Ещё здесь ключи входа (api/access/*) и админка, где они выдаются (admin/).
     </description>
 
     <properties>
         <!-- версия сайта = версия APK (android/app/build.gradle, versionName); менять вместе -->
-        <site.version>1.4.2</site.version>
+        <site.version>1.5.0</site.version>
     </properties>
 
     <dependencyManagement>
@@ -43,6 +44,16 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- ключи входа лежат в одном файле SQLite; версию драйвера задаёт Spring Boot -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

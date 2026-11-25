@@ -6,15 +6,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 // разбор тела запроса страницы. Правила те же, что в мосте Android-приложения
 // (MultiFlowBridge.readMatrix / readVector): каждая клетка - целое число, дробное не обрезается молча
-final class RequestReader {
+public final class RequestReader {
 
     private final ObjectMapper mapper;
 
-    RequestReader(ObjectMapper mapper) {
+    public RequestReader(ObjectMapper mapper) {
         this.mapper = mapper;
     }
 
-    JsonNode parse(String body) {
+    public JsonNode parse(String body) {
         if (body == null || body.isBlank()) {
             throw new MalformedRequestException("пустое тело запроса");
         }
@@ -34,6 +34,25 @@ final class RequestReader {
         return value != null && value.isTextual() && !value.asText().isBlank() ? value.asText() : "unknown";
     }
 
+    public static String text(JsonNode root, String field) {
+        JsonNode value = root.get(field);
+        if (value == null || !value.isTextual()) {
+            throw new MalformedRequestException("нет поля " + field + " со строкой");
+        }
+        return value.asText();
+    }
+
+    static boolean flag(JsonNode root, String field, boolean absent) {
+        JsonNode value = root.get(field);
+        if (value == null || value.isNull()) {
+            return absent;
+        }
+        if (!value.isBoolean()) {
+            throw new MalformedRequestException("поле " + field + ": ожидалось true или false");
+        }
+        return value.asBoolean();
+    }
+
     static int[][] matrix(JsonNode root, String field) {
         JsonNode rows = array(root, field);
         int[][] matrix = new int[rows.size()][];
@@ -50,11 +69,12 @@ final class RequestReader {
         return matrix;
     }
 
-    static int[] vector(JsonNode root, String field, String title) {
+    // item - как называется строка в тексте ошибки: «вид», «поставщик»
+    static int[] vector(JsonNode root, String field, String title, String item) {
         JsonNode values = array(root, field);
         int[] vector = new int[values.size()];
         for (int i = 0; i < values.size(); i++) {
-            vector[i] = integer(values.get(i), title + ", вид " + (i + 1));
+            vector[i] = integer(values.get(i), title + ", " + item + " " + (i + 1));
         }
         return vector;
     }
