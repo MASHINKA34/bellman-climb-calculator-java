@@ -2,6 +2,72 @@ plugins {
     id 'com.android.application'
 }
 
+// адрес и сертификат сервера ключей - из файла вне репозитория (пример в README):
+//   server.url=https://адрес
+//   server.certificate=server.crt     (PEM, путь от папки android)
+// Нет файла - приложение собирается, но ввести ключ негде. Другой файл (для проверки на
+// эмуляторе) - параметром -PserverProperties=путь
+def serverFile = rootProject.file(findProperty('serverProperties') ?: 'server.properties')
+def server = new Properties()
+if (serverFile.exists()) {
+    serverFile.withReader('UTF-8') { server.load(it) }
+}
+def serverUrl = server.getProperty('server.url', '').replaceAll('/+$', '')
+if (!serverUrl.isEmpty() && !serverUrl.startsWith('https://')) {
+    throw new GradleException("server.url must be https: ${serverFile}")
+}
+def serverCertificate = serverUrl.isEmpty() ? null
+        : new File(serverFile.parentFile, server.getProperty('server.certificate', 'server.crt'))
+if (serverCertificate != null && !serverCertificate.exists()) {
+    throw new GradleException("server certificate not found: ${serverCertificate}")
+}
+logger.lifecycle("multiflow: server ${serverUrl.isEmpty() ? 'is not set (' + serverFile + ' not found)' : 'from ' + serverFile}")
+
+// настройки сети: приложение доверяет только сертификату своего сервера - ни чужой сервер,
+// ни телеметрия библиотек соединиться не смогут. Без сервера доверять некому
+abstract class ServerResTask extends DefaultTask {
+
+    @Optional
+    @InputFile
+    abstract RegularFileProperty getCertificate()
+
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDir()
+
+    @TaskAction
+    void generate() {
+        File out = outputDir.get().asFile
+        out.deleteDir()
+        new File(out, 'xml').mkdirs()
+        String anchor = ''
+        if (certificate.present) {
+            new File(out, 'raw').mkdirs()
+            new File(out, 'raw/server_certificate.crt').bytes = certificate.get().asFile.bytes
+            anchor = '<certificates src="@raw/server_certificate" />'
+        }
+        new File(out, 'xml/network_security_config.xml').setText("""<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            ${anchor}
+        </trust-anchors>
+    </base-config>
+</network-security-config>
+""", 'UTF-8')
+    }
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        def task = tasks.register("generateServerRes${variant.name.capitalize()}", ServerResTask) {
+            if (serverCertificate != null) {
+                certificate.set(serverCertificate)
+            }
+        }
+        variant.sources.res.addGeneratedSourceDirectory(task) { it.outputDir }
+    }
+}
+
 android {
     namespace = 'ru.mashinka.multiflow.android'
     compileSdk = 36
@@ -10,14 +76,19 @@ android {
         applicationId = 'ru.mashinka.multiflow'
         minSdk = 29          // Android 10
         targetSdk = 36
-        versionCode = 7
-        versionName = '1.4.2'
+        versionCode = 8
+        versionName = '1.5.0'
+        buildConfigField 'String', 'SERVER_URL', "\"${serverUrl}\""
 
         // ML Kit кладёт модель распознавания в APK отдельно под каждую архитектуру процессора,
         // ~4 МБ на каждую. Оставлены телефоны (arm64-v8a, armeabi-v7a) и x86_64 - эмуляторы
         ndk {
             abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
         }
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {
@@ -31,8 +102,7 @@ android {
             // а не их копия. Ради этого core и написан на чистой Java без зависимостей.
             java.srcDir '../../core/src/main/java'
 
-            // Экран - общая папка ui: index.html, styles.css, android-bridge.js, app.js, placement.js, photo.js.
-            // На втором этапе из неё же соберётся сайт.
+            // Экран - общая папка ui: та же страница, что у сайта.
             assets.srcDir '../../ui'
         }
     }
@@ -51,6 +121,10 @@ android {
     buildTypes {
         release {
             minifyEnabled = false
+            // раздаётся релиз: отладка выключена, кабелем в страницу и данные не попасть.
+            // Подпись - прежняя отладочная (~/.android/debug.keystore): иначе новая версия не
+            // встала бы поверх уже установленных 1.4.2, а ANDROID_ID у телефонов сменился бы
+            signingConfig = signingConfigs.debug
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
                     'proguard-rules.pro'
         }

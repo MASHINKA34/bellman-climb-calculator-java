@@ -53,8 +53,60 @@
         });
     }
 
+    // доступ по ключу: Java ходит на сервер и отвечает не сразу, а в window.onAccessAnswer
+    var accessCalls = {};
+    var accessCounter = 0;
+
+    function accessCall(operation, body) {
+        return new Promise(function (resolve) {
+            accessCounter += 1;
+            var callId = 'a' + Date.now().toString(36) + '-' + accessCounter;
+            accessCalls[callId] = resolve;
+            MultiFlowBridge.accessCall(callId, operation, body);
+        });
+    }
+
+    window.onAccessAnswer = function (answer) {
+        var resolve = accessCalls[answer.callId];
+        delete accessCalls[answer.callId];
+        if (resolve) {
+            resolve(toResponse(JSON.stringify(answer.envelope)));
+        }
+        return true;
+    };
+
+    // перед расчётом доступ проверяется на сервере (если последняя проверка старше 10 с). Что бы она
+    // ни ответила, решает Java: без доступа сам расчёт вернёт отказ
+    function guarded(call) {
+        return accessCall('check', '{"maxAgeMs":10000}').then(function () {
+            return later(call);
+        });
+    }
+
     window.fetch = function (url, options) {
         var address = String(url);
+
+        if (address.indexOf('api/access/activate') !== -1) {
+            return accessCall('activate', options && options.body ? options.body : '{}');
+        }
+
+        if (address.indexOf('api/access/check') !== -1) {
+            return accessCall('check', '{}');
+        }
+
+        // вкладка «Транспортная»: api/transport/example и api/transport/solve
+        if (address.indexOf('api/transport/example') !== -1) {
+            return later(function () {
+                return MultiFlowBridge.transportExample();
+            });
+        }
+
+        if (address.indexOf('api/transport/solve') !== -1) {
+            var transportBody = options && options.body ? options.body : '{}';
+            return guarded(function () {
+                return MultiFlowBridge.solveTransport(transportBody);
+            });
+        }
 
         // вкладка «Размещение»: api/placement/example и api/placement/solve
         if (address.indexOf('api/placement/example') !== -1) {
@@ -65,7 +117,7 @@
 
         if (address.indexOf('api/placement/solve') !== -1) {
             var placementBody = options && options.body ? options.body : '{}';
-            return later(function () {
+            return guarded(function () {
                 return MultiFlowBridge.solvePlacement(placementBody);
             });
         }
@@ -78,7 +130,7 @@
 
         if (address.indexOf('api/solve') !== -1) {
             var body = options && options.body ? options.body : '{}';
-            return later(function () {
+            return guarded(function () {
                 return MultiFlowBridge.solve(body);
             });
         }

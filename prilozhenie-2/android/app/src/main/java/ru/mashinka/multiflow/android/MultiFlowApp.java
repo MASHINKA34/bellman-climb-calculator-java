@@ -9,11 +9,28 @@ import android.os.Process;
 // приложение целиком: до первого экрана настраивает логи и ловушку для падений
 public class MultiFlowApp extends Application {
 
+    private AccessGuard access;
+
+    // доступ по ключу - один на всё приложение: экран может пересоздаваться
+    AccessGuard access() {
+        return access;
+    }
+
+    private String versionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (PackageManager.NameNotFoundException missing) {
+            AppLog.w("app", "own package info is unavailable, version unknown", missing);
+            return "";
+        }
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
         AppLog.install();
         installCrashLogger();
+        access = new AccessGuard(this, versionName());
 
         AppLog.i("app", "start: version " + versionText()
                 + ", Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")"

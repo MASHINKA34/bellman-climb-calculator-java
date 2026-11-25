@@ -249,7 +249,8 @@ final class PhotoScanner {
         }
     }
 
-    // слова ML Kit -> слова для ядра: текст и прямоугольник
+    // слова ML Kit -> слова для ядра: текст и прямоугольник. Слово, в котором слиплись числа соседних
+    // клеток, делится по широким промежуткам между знаками
     private static List<PhotoToken> tokensOf(Text text) {
         List<PhotoToken> tokens = new ArrayList<>();
         for (Text.TextBlock block : text.getTextBlocks()) {
@@ -259,11 +260,28 @@ final class PhotoScanner {
                     if (box == null) {
                         continue;
                     }
-                    tokens.add(new PhotoToken(element.getText(), box.left, box.top, box.right, box.bottom));
+                    List<PhotoToken> words = PhotoToken.split(symbolsOf(element));
+                    if (words.size() > 1) {
+                        AppLog.d("photo", "word '" + element.getText() + "' is split into " + words);
+                        tokens.addAll(words);
+                    } else {
+                        tokens.add(new PhotoToken(element.getText(), box.left, box.top, box.right, box.bottom));
+                    }
                 }
             }
         }
         return tokens;
+    }
+
+    private static List<PhotoToken> symbolsOf(Text.Element element) {
+        List<PhotoToken> symbols = new ArrayList<>();
+        for (Text.Symbol symbol : element.getSymbols()) {
+            Rect box = symbol.getBoundingBox();
+            if (box != null) {
+                symbols.add(new PhotoToken(symbol.getText(), box.left, box.top, box.right, box.bottom));
+            }
+        }
+        return symbols;
     }
 
     // ------------------------------------------------------------------ картинка

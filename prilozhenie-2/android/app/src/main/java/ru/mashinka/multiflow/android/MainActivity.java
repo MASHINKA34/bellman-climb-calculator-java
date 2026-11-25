@@ -36,6 +36,9 @@ public class MainActivity extends Activity {
     private WebView webView;
     private long createdAt;
 
+    // доступ по ключу: проверяется, пока экран виден
+    private AccessGuard access;
+
     // таблица по фото: камера/галерея и распознавание
     private PhotoScanner photoScanner;
     // ответы по фото, пришедшие до того, как страница загрузилась (экран пересоздавался,
@@ -91,11 +94,13 @@ public class MainActivity extends Activity {
                 == Configuration.UI_MODE_NIGHT_YES;
         AppLog.i("screen", "system theme " + (night ? "dark" : "light"));
 
+        access = ((MultiFlowApp) getApplication()).access();
         photoScanner = new PhotoScanner(this, this::deliverPhotoAnswer, savedInstanceState);
 
         webView.setWebChromeClient(new ConsoleToLogcat());
         webView.setWebViewClient(new PageClient());
-        webView.addJavascriptInterface(new MultiFlowBridge(night, this, photoScanner), MultiFlowBridge.NAME);
+        webView.addJavascriptInterface(new MultiFlowBridge(night, this, photoScanner, access, this::deliverAccessAnswer),
+                MultiFlowBridge.NAME);
 
         AppLog.i("screen", "loading " + PAGE);
         webView.loadUrl(PAGE);
@@ -214,6 +219,39 @@ public class MainActivity extends Activity {
             recreate();
             return true;
         }
+    }
+
+    // ------------------------------------------------------------------ доступ по ключу
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        access.start(answer -> callPage("onAccessChanged",
+                "{\"status\":" + answer.status + ",\"body\":" + answer.body + "}"));
+    }
+
+    @Override
+    protected void onPause() {
+        access.stop();
+        super.onPause();
+    }
+
+    // ответ на вызов страницы MultiFlowBridge.accessCall
+    private void deliverAccessAnswer(String callId, AccessGuard.Answer answer) {
+        callPage("onAccessAnswer", "{\"callId\":\"" + callId + "\",\"envelope\":" + answer.envelope() + "}");
+    }
+
+    // вызов функции страницы; до загрузки страницы состояние она прочитает сама (accessState)
+    private void callPage(String function, String json) {
+        if (webView == null || !pageReady) {
+            AppLog.d("access", "page is not ready, " + function + " is skipped");
+            return;
+        }
+        webView.evaluateJavascript("window." + function + " && window." + function + "(" + json + ")", result -> {
+            if (!"true".equals(result)) {
+                AppLog.w("access", "page did not accept " + function + ": " + result);
+            }
+        });
     }
 
     // ------------------------------------------------------------------ таблица по фото
