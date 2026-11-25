@@ -759,6 +759,14 @@ function renderPlaceholder() {
         + '</div></div>';
 }
 
+// доступ по ключу пропал: решение убирается с экрана, введённая матрица остаётся
+function clearFlowResult() {
+    state.result = null;
+    state.resultInput = null;
+    hideInputMessage();
+    renderPlaceholder();
+}
+
 function renderResult(result) {
     const html = [];
     html.push('<div class="message warn" id="stale-note" hidden>Сеть изменилась после расчёта - результат ниже '
@@ -1362,11 +1370,13 @@ function openStep(index) {
 
 /* ============================ вкладки ============================ */
 
-// вкладка «Поток» - этот файл, вкладка «Размещение» - placement.js
+// вкладка «Поток» - этот файл, «Размещение» - placement.js, «Транспортная» - transport.js.
+// Какие из них видны, решает ключ (access.js)
 const TAB_STORAGE_KEY = 'multiflow.tab.v1';
 const TABS = {
     flow: {subtitle: 'Максимальные потоки между всеми парами вершин - дерево Гомори-Ху'},
-    placement: {subtitle: 'Размещение производства - задача о назначениях, венгерский метод'}
+    placement: {subtitle: 'Размещение производства - задача о назначениях, венгерский метод'},
+    transport: {subtitle: 'Транспортная задача - северо-западный угол и минимальная стоимость'}
 };
 
 function selectTab(name, reason) {
@@ -1375,8 +1385,9 @@ function selectTab(name, reason) {
         button.classList.toggle('active', active);
         button.setAttribute('aria-selected', active ? 'true' : 'false');
     });
-    $('#tab-flow').hidden = name !== 'flow';
-    $('#tab-placement').hidden = name !== 'placement';
+    Object.keys(TABS).forEach(function (tab) {
+        $('#tab-' + tab).hidden = tab !== name;
+    });
     $('#masthead-sub').textContent = TABS[name].subtitle;
     writeStorage(TAB_STORAGE_KEY, name);
     log.info('tab selected', {tab: name, reason: reason});

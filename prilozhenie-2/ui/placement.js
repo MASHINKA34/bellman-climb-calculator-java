@@ -728,6 +728,14 @@ function plRenderPlaceholder() {
         + '</div></div>';
 }
 
+// доступ по ключу пропал: решение убирается с экрана, введённые таблицы остаются
+function plClearResult() {
+    pl.result = null;
+    pl.resultInput = null;
+    plHideMessage();
+    plRenderPlaceholder();
+}
+
 function plRenderResult(result) {
     const html = [];
     html.push('<div class="message warn" id="pl-stale-note" hidden>Данные изменились после расчёта - результат '

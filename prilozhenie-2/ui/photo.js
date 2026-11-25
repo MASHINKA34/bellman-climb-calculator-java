@@ -1,7 +1,7 @@
 'use strict';
 
 /* ===========================================================================
-   Таблица по фото - для обеих вкладок.
+   Таблица по фото - для всех вкладок.
 
    Кнопка «По фото» -> выбор: камера или галерея -> снимок распознаётся на телефоне
    (ML Kit, модель внутри приложения) -> ядро собирает из слов таблицу ->
@@ -11,8 +11,8 @@
    поэтому в обычном браузере кнопок «По фото» нет. Ответ приходит позже
    в window.onPhotoScan - его вызывает MainActivity.
 
-   Подключается после app.js и placement.js и берёт оттуда утилиты и функции
-   подстановки: applyFlowPhoto (app.js) и plApplyPhoto (placement.js).
+   Подключается последним и берёт из остальных файлов утилиты и функции подстановки:
+   applyFlowPhoto (app.js), plApplyPhoto (placement.js) и trApplyPhoto (transport.js).
    Код рассчитан и на старый WebView из Android 10, поэтому без ?. и ??.
    =========================================================================== */
 
@@ -22,7 +22,8 @@ const PHOTO_TITLES = {
     flow: 'Матрица сети',
     production: 'Издержки производства',
     sales: 'Издержки сбыта',
-    plan: 'План по видам продукции'
+    plan: 'План по видам продукции',
+    transport: 'Таблица транспортной задачи'
 };
 
 // отметки клеток из ядра (PhotoResult)
@@ -257,7 +258,12 @@ function photoSummary(answer) {
         return text + ' Пустая клетка - ветви нет: сверьте с фото, что там действительно пусто.';
     }
     let size;
-    if (answer.target === 'plan') {
+    if (answer.target === 'transport') {
+        const suppliers = answer.rows - 1;
+        const consumers = answer.columns - 1;
+        size = suppliers + ' ' + plural(suppliers, 'поставщик', 'поставщика', 'поставщиков') + ', ' + consumers + ' '
+            + plural(consumers, 'потребитель', 'потребителя', 'потребителей') + '.';
+    } else if (answer.target === 'plan') {
         size = answer.rows + ' ' + plural(answer.rows, 'вид', 'вида', 'видов') + ': объём и цена.';
     } else {
         size = 'Таблица ' + answer.rows + '×' + answer.columns + ': ' + answer.rows + ' '
@@ -277,14 +283,21 @@ function photoSummary(answer) {
 
 function photoGrid(answer) {
     const plan = answer.target === 'plan';
+    const transport = answer.target === 'transport';
     let html = '<div class="table-scroll"><table class="data photo-grid"><thead><tr><th></th>';
     for (let j = 0; j < answer.columns; j++) {
-        html += '<th>' + (plan ? (j === 0 ? 'Объём' : 'Цена') : (j + 1)) + '</th>';
+        const title = plan ? (j === 0 ? 'Объём' : 'Цена')
+            : transport ? (j === answer.columns - 1 ? 'Запас' : 'B' + (j + 1)) : (j + 1);
+        html += '<th>' + title + '</th>';
     }
     html += '</tr></thead><tbody>';
     for (let i = 0; i < answer.rows; i++) {
-        html += '<tr><th>' + (i + 1) + '</th>';
+        html += '<tr><th>' + (transport ? (i === answer.rows - 1 ? 'Потр.' : 'A' + (i + 1)) : (i + 1)) + '</th>';
         for (let j = 0; j < answer.columns; j++) {
+            if (transport && i === answer.rows - 1 && j === answer.columns - 1) {
+                html += '<td></td>';
+                continue;
+            }
             if (answer.target === 'flow' && i === j) {
                 html += '<td class="diag">-</td>';
                 continue;
@@ -327,6 +340,8 @@ function photoApply() {
     try {
         if (answer.target === 'flow') {
             applyFlowPhoto(answer);
+        } else if (answer.target === 'transport') {
+            trApplyPhoto(answer);
         } else {
             plApplyPhoto(answer);
         }
@@ -371,3 +386,5 @@ function onPhotoClick(event) {
 }
 
 photoInit();
+// все файлы страницы загружены - можно показывать вкладки, которые разрешает ключ
+accessInit();

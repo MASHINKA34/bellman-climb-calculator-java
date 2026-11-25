@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="access-locked">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
     <meta name="description"
-          content="Многополюсный максимальный поток (дерево Гомори-Ху) и размещение производства венгерским методом">
+          content="Многополюсный максимальный поток, размещение производства и транспортная задача">
     <title>Многополюсный поток</title>
     <!-- сайт на айфоне: значок и название на экране «Домой», открывается без адресной строки -->
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -23,11 +23,34 @@
         <p id="masthead-sub">Максимальные потоки между всеми парами вершин - дерево Гомори-Ху</p>
     </header>
 
+    <!-- вход по ключу (access.js); пока ключа нет, вкладки ниже скрыты -->
+    <section class="card" id="access">
+        <h2>Вход по ключу</h2>
+        <div class="card-body">
+            <p class="hint center" id="access-wait">Проверяю доступ…</p>
+            <form id="access-form" autocomplete="off" hidden>
+                <div class="message error" id="access-message" role="alert" hidden></div>
+                <p class="hint" id="access-hint"></p>
+                <label class="size-field" for="access-key">Ключ</label>
+                <input type="text" id="access-key" class="access-key" placeholder="ABCD-EFGH-JKLM" maxlength="20"
+                       inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off"
+                       spellcheck="false" enterkeyhint="go">
+                <button type="submit" class="btn-primary" id="access-enter">Войти</button>
+            </form>
+            <div id="access-offline" hidden>
+                <p id="access-offline-text"></p>
+                <button type="button" class="btn-primary" id="access-retry">Повторить</button>
+            </div>
+        </div>
+    </section>
+
     <nav class="tabs" role="tablist" aria-label="Задачи">
         <button type="button" role="tab" id="tab-btn-flow" data-tab="flow" aria-controls="tab-flow"
                 aria-selected="true" class="active">Поток</button>
         <button type="button" role="tab" id="tab-btn-placement" data-tab="placement" aria-controls="tab-placement"
                 aria-selected="false">Размещение</button>
+        <button type="button" role="tab" id="tab-btn-transport" data-tab="transport" aria-controls="tab-transport"
+                aria-selected="false">Транспортная</button>
     </nav>
 
     <main>
@@ -126,11 +149,58 @@
 
             <div id="pl-results"></div>
         </div>
+
+        <div class="tab-panel" id="tab-transport" role="tabpanel" aria-labelledby="tab-btn-transport" hidden>
+            <section class="card" id="tr-input-card">
+                <h2>Транспортная задача</h2>
+                <div class="card-body">
+                    <div class="toolbar">
+                        <div class="size-row">
+                            <label class="size-field" for="tr-suppliers">Поставщиков</label>
+                            <select id="tr-suppliers"></select>
+                        </div>
+                        <div class="size-row">
+                            <label class="size-field" for="tr-consumers">Потребителей</label>
+                            <select id="tr-consumers"></select>
+                        </div>
+                        <div class="button-row">
+                            <select id="tr-variant" aria-label="Вариант контрольной"></select>
+                            <button type="button" class="btn-ghost" id="tr-btn-clear">Очистить</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-ghost btn-photo btn-block" data-photo="transport">По фото</button>
+                    <div class="undo" id="tr-undo" hidden>
+                        <span id="tr-undo-text"></span>
+                        <button type="button" class="btn-link" id="tr-btn-undo">Вернуть как было</button>
+                    </div>
+                    <p class="hint">
+                        Строки A - поставщики, столбцы B - потребители, в клетках - стоимость перевозки единицы груза.
+                        Справа запасы, снизу потребности. Все числа целые: стоимости от 0 до 1&nbsp;000&nbsp;000,
+                        запасы и потребности от 1 до 1&nbsp;000&nbsp;000.
+                    </p>
+                    <div class="matrix-scroll">
+                        <table class="matrix transport" id="tr-table"></table>
+                    </div>
+                    <p class="hint center" id="tr-balance"></p>
+                    <fieldset class="choice" id="tr-fictitious">
+                        <legend>Нули фиктивной строки или столбца в методе минимальной стоимости</legend>
+                        <label><input type="radio" name="tr-fictitious" value="last" checked> брать в последнюю очередь</label>
+                        <label><input type="radio" name="tr-fictitious" value="tariff"> брать первыми, как самые дешёвые</label>
+                    </fieldset>
+                    <div class="message error" id="tr-input-message" role="alert" hidden></div>
+                    <button type="button" class="btn-primary" id="tr-btn-solve">Рассчитать</button>
+                </div>
+            </section>
+
+            <div id="tr-results"></div>
+        </div>
     </main>
 </div>
 
 <script src="app.js"></script>
+<script src="access.js"></script>
 <script src="placement.js"></script>
+<script src="transport.js"></script>
 <script src="photo.js"></script>
 </body>
 </html>
