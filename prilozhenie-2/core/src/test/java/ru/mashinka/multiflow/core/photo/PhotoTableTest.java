@@ -20,6 +20,8 @@ import ru.mashinka.multiflow.core.TestLogging;
 import ru.mashinka.multiflow.core.json.PhotoJson;
 import ru.mashinka.multiflow.core.network.Examples;
 import ru.mashinka.multiflow.core.placement.PlacementExamples;
+import ru.mashinka.multiflow.core.transport.TransportExamples;
+import ru.mashinka.multiflow.core.transport.TransportProblem;
 
 // фото здесь не настоящие: слова раскладываются по координатам так, как их вернуло бы
 // распознавание для таблицы на снимке - с заголовками, наклоном, пропусками и мусором
@@ -52,6 +54,35 @@ class PhotoTableTest {
         assertNull(TableScanner.normalize("руб."));
         assertNull(TableScanner.normalize("S"), "одинокая буква без цифр - не число");
         assertNull(TableScanner.normalize("П1"));
+    }
+
+    // «10» и «210» из соседних клеток слиплись в одно слово - делятся по широкому промежутку,
+    // а узкие единицы внутри «11» и «110» не разрываются
+    @Test
+    void gluedNumbersAreSplitByWideGaps() {
+        assertEquals(List.of("10", "210"), words(symbols("10210", 30, 18, 4, 2, 60)));
+        assertEquals(List.of("110"), words(symbols("110", 30, 8, 14, -1, 0)), "у единиц широкие поля");
+        assertEquals(List.of("7", "7"), words(symbols("77", 30, 18, 4, 1, 45)));
+        assertEquals(List.of("5"), words(symbols("5", 30, 18, 4, -1, 0)));
+        assertTrue(PhotoToken.split(List.of()).isEmpty());
+        PhotoToken second = PhotoToken.split(symbols("10210", 30, 18, 4, 2, 60)).get(1);
+        assertEquals(100 + 2 * 18 + 4 + 60, second.getLeft(), "прямоугольник - по своим знакам");
+        assertEquals(30, second.height());
+    }
+
+    // знаки слова слева направо: ширина знака, промежуток; после wideAfter-го - широкий промежуток
+    private static List<PhotoToken> symbols(String text, int height, int width, int gap, int wideAfter, int wideGap) {
+        List<PhotoToken> symbols = new ArrayList<>();
+        int left = 100;
+        for (int k = 0; k < text.length(); k++) {
+            symbols.add(new PhotoToken(text.substring(k, k + 1), left, 50, left + width, 50 + height));
+            left += width + (k + 1 == wideAfter ? wideGap : gap);
+        }
+        return symbols;
+    }
+
+    private static List<String> words(List<PhotoToken> symbols) {
+        return PhotoToken.split(symbols).stream().map(PhotoToken::getText).toList();
     }
 
     // ------------------------------------------------------------------ «Размещение»
@@ -229,6 +260,84 @@ class PhotoTableTest {
         assertEquals(PhotoResult.OK, result.getFlags()[4][0]);
     }
 
+    // ------------------------------------------------------------------ «Транспортная»
+
+    // как в задании: без номеров, справа запасы, снизу потребности, правый нижний угол пустой
+    @Test
+    void transportTableIsTakenWithSupplyAndDemand() {
+        for (int number = 1; number <= TransportExamples.count(); number++) {
+            String[][] cells = transportCells(TransportExamples.variant(number));
+            PhotoResult result = fit(new Sheet().table(cells), PhotoTarget.TRANSPORT);
+            assertTrue(result.isOk(), "вариант " + number + ": " + result.getError());
+            assertArrayEquals(cells, result.getValues(), "вариант " + number);
+            assertEquals(29, result.getRecognized());
+            assertEquals(29, result.getExpected(), "20 тарифов, 4 запаса, 5 потребностей");
+            assertEquals(0, result.count(PhotoResult.MISSING));
+        }
+    }
+
+    // число найдено дважды: отдельно и в составе слипшегося слова - лишнее отбрасывается, строка не двоится
+    @Test
+    void numberFoundTwiceIsTakenOnce() {
+        String[][] cells = transportCells(TransportExamples.variant(10));
+        List<PhotoToken> tokens = new Sheet().table(cells);
+        int before = tokens.size();
+        for (int k : new int[]{3, 8}) {
+            PhotoToken token = tokens.get(k);
+            tokens.add(new PhotoToken(token.getText(), token.getLeft(), token.getTop() - 14, token.getRight() + 40,
+                    token.getBottom() + 5));
+        }
+        assertEquals(before + 2, tokens.size());
+        PhotoResult result = fit(tokens, PhotoTarget.TRANSPORT);
+        assertTrue(result.isOk(), result.getError());
+        assertArrayEquals(cells, result.getValues());
+        assertEquals(0, result.count(PhotoResult.CHECK));
+    }
+
+    // номер варианта слева от первой строки - не часть таблицы; снимок под углом и с дрожанием
+    @Test
+    void transportTableWithVariantNumberAndSkew() {
+        String[][] cells = transportCells(TransportExamples.variant(22));
+        List<PhotoToken> tokens = new Sheet().skew(0.03).jitter(3, new Random(8)).table(cells);
+        tokens.add(new PhotoToken("22", -300, 40, -264, 70));
+        PhotoResult result = fit(tokens, PhotoTarget.TRANSPORT);
+        assertTrue(result.isOk(), result.getError());
+        assertArrayEquals(cells, result.getValues());
+    }
+
+    @Test
+    void transportTableWithHeaders() {
+        String[][] cells = transportCells(TransportExamples.variant(5));
+        PhotoResult result = fit(new Sheet().header(true).labels(true).table(cells), PhotoTarget.TRANSPORT);
+        assertTrue(result.isOk(), result.getError());
+        assertArrayEquals(cells, result.getValues());
+    }
+
+    @Test
+    void transportCornerNumberAndMissingCells() {
+        String[][] cells = transportCells(TransportExamples.variant(3));
+        cells[4][5] = "600";
+        cells[1][2] = null;
+        PhotoResult result = fit(new Sheet().table(cells), PhotoTarget.TRANSPORT);
+        assertTrue(result.isOk(), result.getError());
+        assertNull(result.getValues()[4][5], "число из угла не подставляется");
+        assertEquals(PhotoResult.OK, result.getFlags()[4][5]);
+        assertEquals(PhotoResult.MISSING, result.getFlags()[1][2]);
+        assertEquals(1, result.count(PhotoResult.MISSING), "пустой угол пропуском не считается");
+        assertEquals(28, result.getRecognized());
+        assertTrue(result.getNotes().stream().anyMatch(note -> note.contains("600")));
+    }
+
+    @Test
+    void transportRejectsTablesOutsideTheLimits() {
+        PhotoResult small = fit(new Sheet().table(new String[][]{{"7", "8", "9"}, {"4", "5", "6"}}), PhotoTarget.TRANSPORT);
+        assertFalse(small.isOk());
+        assertTrue(small.getError().contains("Строк должно быть от 3 до 11"), small.getError());
+        PhotoResult narrow = fit(new Sheet().table(new String[][]{{"7", "8"}, {"4", "5"}, {"9", "6"}}), PhotoTarget.TRANSPORT);
+        assertFalse(narrow.isOk());
+        assertTrue(narrow.getError().contains("Столбцов должно быть от 3 до 11"), narrow.getError());
+    }
+
     // ------------------------------------------------------------------ отказы
 
     @Test
@@ -317,6 +426,23 @@ class PhotoTableTest {
                     cells[i][j] = network[i][j] == 0 ? null : String.valueOf(network[i][j]);
                 }
             }
+        }
+        return cells;
+    }
+
+    // таблица транспортной задачи так, как она напечатана: запасы справа, потребности снизу
+    private static String[][] transportCells(TransportProblem problem) {
+        int m = problem.suppliers();
+        int n = problem.consumers();
+        String[][] cells = new String[m + 1][n + 1];
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                cells[i][j] = String.valueOf(problem.cost(i, j));
+            }
+            cells[i][n] = String.valueOf(problem.supply(i));
+        }
+        for (int j = 0; j < n; j++) {
+            cells[m][j] = String.valueOf(problem.demand(j));
         }
         return cells;
     }
