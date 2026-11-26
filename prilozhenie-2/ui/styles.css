@@ -1102,6 +1102,15 @@ table.tr-plan .tariff {
     text-align: right;
 }
 
+/* номер шага, на котором заполнена клетка: бледно слева, чтобы не мешал читать числа */
+table.tr-plan .tariff .step-no {
+    float: left;
+    margin: -1px 0 0 1px;
+    color: var(--text-faint);
+    font-style: normal;
+    font-size: 11px;
+}
+
 table.tr-plan td b {
     display: block;
     font-size: 14.5px;

@@ -174,8 +174,8 @@
                         <button type="button" class="btn-link" id="tr-btn-undo">Вернуть как было</button>
                     </div>
                     <p class="hint">
-                        Строки A - поставщики, столбцы B - потребители, в клетках - стоимость перевозки единицы груза.
-                        Справа запасы, снизу потребности. Все числа целые: стоимости от 0 до 1&nbsp;000&nbsp;000,
+                        Строки A - поставщики, столбцы B - потребители, в клетках - тарифы: стоимость перевозки единицы груза.
+                        Справа запасы, снизу потребности. Все числа целые: тарифы от 0 до 1&nbsp;000&nbsp;000,
                         запасы и потребности от 1 до 1&nbsp;000&nbsp;000.
                     </p>
                     <div class="matrix-scroll">
@@ -183,7 +183,7 @@
                     </div>
                     <p class="hint center" id="tr-balance"></p>
                     <fieldset class="choice" id="tr-fictitious">
-                        <legend>Нули фиктивной строки или столбца в методе минимальной стоимости</legend>
+                        <legend>Нули фиктивной строки или столбца в методе минимального тарифа</legend>
                         <label><input type="radio" name="tr-fictitious" value="last" checked> брать в последнюю очередь</label>
                         <label><input type="radio" name="tr-fictitious" value="tariff"> брать первыми, как самые дешёвые</label>
                     </fieldset>

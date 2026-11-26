@@ -2,7 +2,7 @@
 
 /* ===========================================================================
    Вкладка «Транспортная» - математическая модель (открытая и закрытая) и начальный
-   план двумя методами: северо-западного угла и минимальной стоимости. Для сверки с
+   план двумя методами: северо-западного угла и минимального тарифа. Для сверки с
    Excel - оптимальный план без шагов.
 
    Весь расчёт выполняет ядро на Java (пакет transport). В приложении его зовёт мост
@@ -125,7 +125,7 @@ function trCellName(closed, row, column) {
 
 function trFieldName(field, i, j) {
     if (field === 'costs') {
-        return 'Стоимость A' + (i + 1) + ' → B' + (j + 1);
+        return 'Тариф A' + (i + 1) + ' → B' + (j + 1);
     }
     return field === 'supply' ? 'Запас A' + (i + 1) : 'Потребность B' + (j + 1);
 }
@@ -163,7 +163,7 @@ function trBuildVariants() {
     $('#tr-variant').innerHTML = html;
 }
 
-// таблица как в задании: стоимости, справа запасы, снизу потребности
+// таблица как в задании: тарифы, справа запасы, снизу потребности
 function trBuildTable() {
     const m = tr.suppliers;
     const n = tr.consumers;
@@ -191,7 +191,7 @@ function trBuildTable() {
     trRefreshValidation(false);
 }
 
-// разбор клетки: целое число; стоимость от 0, запас и потребность от 1
+// разбор клетки: целое число; тариф от 0, запас и потребность от 1
 function trParse(text, field) {
     const value = String(text).trim();
     if (value === '') {
@@ -715,7 +715,7 @@ function trRenderResult(result) {
     html.push('<nav class="chips" aria-label="Разделы результата">'
         + '<a href="#tr-sec-model" data-target="tr-sec-model">Модель</a>'
         + '<a href="#tr-sec-nw" data-target="tr-sec-nw">Северо-западный угол</a>'
-        + '<a href="#tr-sec-min" data-target="tr-sec-min">Минимальная стоимость</a>'
+        + '<a href="#tr-sec-min" data-target="tr-sec-min">Минимальный тариф</a>'
         + '<a href="#tr-sec-opt" data-target="tr-sec-opt">Оптимум</a>'
         + '</nav>');
     html.push(trModelCard(result));
@@ -758,7 +758,7 @@ function trModelCard(result) {
             ? 'Добавляется фиктивный поставщик <b>' + trSupplierName(closed, closed.fictitiousRow - 1) + '</b> с запасом '
             : 'Добавляется фиктивный потребитель <b>' + trConsumerName(closed, closed.fictitiousColumn - 1)
                 + '</b> с потребностью ')
-        + trNumber(closed.amount) + ', все его стоимости - нули.</p>'
+        + trNumber(closed.amount) + ', все его тарифы - нули.</p>'
         + trClosedTable(closed)
         + trModel(closed.costs, closed.supply, closed.demand, 'eq', 'eq');
     return html + '</div></section>';
@@ -796,7 +796,7 @@ function trModel(costs, supply, demand, supplySign, demandSign) {
         + '<p class="nonnegative"><i>x</i><sub>ij</sub> ≥ 0, <i>i</i> = 1..' + m + ', <i>j</i> = 1..' + n + '</p></div>';
 }
 
-// таблица закрытой модели: стоимости, запасы, потребности
+// таблица закрытой модели: тарифы, запасы, потребности
 function trClosedTable(closed) {
     return trTable(closed, function (i, j) {
         return {text: trNumber(closed.costs[i][j]), cls: trIsFictitious(closed, i, j) ? 'fict' : ''};
@@ -836,21 +836,48 @@ function trTable(closed, cell, right, bottom, crossed, titles) {
 
 /* ------------------------------------------------ планы */
 
-// клетка плана: стоимость мелко сверху, перевозка крупно
-function trPlanCell(closed, plan, i, j) {
+// номер шага, на котором заполнена клетка: ① ... ⑳. Шагов не больше 20 (10 + 11 - 1 с фиктивным столбцом),
+// дальше на всякий случай - число в скобках
+function trStepMark(index) {
+    return index >= 1 && index <= 20 ? String.fromCharCode(0x2460 + index - 1) : '(' + index + ')';
+}
+
+// верх клетки: слева бледно номер шага (если клетка уже заполнена), справа тариф
+function trCellTop(tariff, stepIndex) {
+    return '<span class="tariff">' + (stepIndex
+        ? '<span class="step-no" title="шаг ' + stepIndex + '">' + trStepMark(stepIndex) + '</span>' : '')
+        + trNumber(tariff) + '</span>';
+}
+
+// в какой клетке какой шаг: «строка:столбец» -> номер шага (у оптимума шагов нет - пусто)
+function trStepOrder(plan) {
+    const order = {};
+    plan.steps.forEach(function (step) {
+        order[(step.row - 1) + ':' + (step.column - 1)] = step.index;
+    });
+    return order;
+}
+
+// клетка плана: номер шага и тариф мелко сверху, перевозка крупно
+function trPlanCell(closed, plan, i, j, order) {
     const filled = plan.filled[i][j];
     const amount = plan.amount[i][j];
     return {
-        text: '<span class="tariff">' + trNumber(closed.costs[i][j]) + '</span><b>' + (filled ? trNumber(amount) : '&nbsp;') + '</b>',
+        text: trCellTop(closed.costs[i][j], order[i + ':' + j]) + '<b>' + (filled ? trNumber(amount) : '&nbsp;') + '</b>',
         cls: (filled ? 'filled' : '') + (filled && amount === 0 ? ' basic-zero' : '')
             + (trIsFictitious(closed, i, j) ? ' fict' : '')
     };
 }
 
 function trPlanTable(result, plan) {
-    return trTable(result.closed, function (i, j) {
-        return trPlanCell(result.closed, plan, i, j);
+    const order = trStepOrder(plan);
+    let html = trTable(result.closed, function (i, j) {
+        return trPlanCell(result.closed, plan, i, j, order);
     }, result.closed.supply, result.closed.demand, null);
+    if (plan.steps.length) {
+        html += '<p class="legend">' + trStepMark(1) + ' ' + trStepMark(2) + ' ... - на каком шаге заполнена клетка.</p>';
+    }
+    return html;
 }
 
 // Z = 13·50 + 5·50 + ... = 5190; базисные нули в сумму не пишутся
@@ -914,14 +941,14 @@ function trNorthWestCard(result) {
 
 function trMinimumCostCard(result) {
     const plan = result.minimumCost;
-    let rule = 'Каждый раз заполняется клетка с наименьшей стоимостью из невычеркнутых. Если таких несколько - та, куда '
+    let rule = 'Каждый раз заполняется клетка с наименьшим тарифом из невычеркнутых. Если таких несколько - та, куда '
         + 'помещается больше груза, из равных - верхняя, затем левая.';
     if (result.type !== 'closed') {
         rule += result.fictitiousLast
             ? ' Фиктивные клетки берутся в последнюю очередь.'
-            : ' Фиктивные клетки берутся по их стоимости 0, то есть первыми.';
+            : ' Фиктивные клетки берутся по их тарифу 0, то есть первыми.';
     }
-    let html = '<section class="card" id="tr-sec-min"><h2>Метод минимальной стоимости</h2><div class="card-body">'
+    let html = '<section class="card" id="tr-sec-min"><h2>Метод минимального тарифа</h2><div class="card-body">'
         + '<p class="hint">' + rule + '</p>'
         + trPlanTable(result, plan)
         + trTotalLine(result, plan)
@@ -929,7 +956,7 @@ function trMinimumCostCard(result) {
         + trFictitiousLine(result, plan);
     if (result.otherCosts.length) {
         const shown = result.otherCosts.slice(0, 30);
-        html += '<div class="message note">Были клетки с одинаковой стоимостью. Если взять другую из них, тоже по правилам '
+        html += '<div class="message note">Были клетки с одинаковым тарифом. Если взять другую из них, тоже по правилам '
             + 'метода выйдет <i>Z</i> = ' + shown.map(trNumber).join(', ')
             + (shown.length < result.otherCosts.length || result.otherCostsTruncated ? ' и другие' : '') + '.</div>';
     }
@@ -953,7 +980,7 @@ function trOptimalCard(result) {
         + '<div class="table-scroll"><table class="data answer"><thead><tr><th>План</th><th>Z</th><th></th></tr></thead><tbody>'
         + '<tr><td>Северо-западный угол</td><td class="num">' + trNumber(result.northWest.cost) + '</td><td>'
         + difference(result.northWest.cost) + '</td></tr>'
-        + '<tr><td>Минимальная стоимость</td><td class="num">' + trNumber(result.minimumCost.cost) + '</td><td>'
+        + '<tr><td>Минимальный тариф</td><td class="num">' + trNumber(result.minimumCost.cost) + '</td><td>'
         + difference(result.minimumCost.cost) + '</td></tr>'
         + '<tr><td>Оптимальный</td><td class="num">' + trNumber(plan.cost) + '</td><td></td></tr>'
         + '</tbody></table></div></div></section>';
@@ -965,11 +992,11 @@ function trSteps(result, plan, id) {
     const count = plan.steps.length;
     let html = '<h4 class="sub">Шаги: ' + count + '</h4>'
         + '<div class="steps-toolbar"><button type="button" class="btn-link" data-steps="' + id + '">Раскрыть все</button></div>';
-    // что уже лежит в клетках перед шагом
+    // что уже лежит в клетках и на каком шаге туда попало
     const amounts = {};
     plan.steps.forEach(function (step, k) {
         const previous = k === 0 ? null : plan.steps[k - 1];
-        amounts[(step.row - 1) + ':' + (step.column - 1)] = step.amount;
+        amounts[(step.row - 1) + ':' + (step.column - 1)] = {amount: step.amount, index: step.index};
         html += trStep(result, step, previous, Object.assign({}, amounts), id);
     });
     return '<div class="tr-steps" id="tr-steps-' + id + '">' + html + '</div>';
@@ -1017,12 +1044,12 @@ function trStep(result, step, previous, amounts, id) {
     }
 
     html += trTable(closed, function (i, j) {
-        const amount = amounts[i + ':' + j];
+        const filled = amounts[i + ':' + j];
         const current = i === row && j === column;
         return {
-            text: '<span class="tariff">' + trNumber(closed.costs[i][j]) + '</span><b>'
-                + (amount === undefined ? '&nbsp;' : trNumber(amount)) + '</b>',
-            cls: (amount === undefined ? '' : 'filled') + (current ? ' current' : '')
+            text: trCellTop(closed.costs[i][j], filled && filled.index) + '<b>'
+                + (filled === undefined ? '&nbsp;' : trNumber(filled.amount)) + '</b>',
+            cls: (filled === undefined ? '' : 'filled') + (current ? ' current' : '')
                 + (trIsFictitious(closed, i, j) ? ' fict' : '')
         };
     }, step.supplyAfter, step.demandAfter, {rows: step.rowsCrossed, columns: step.columnsCrossed},
@@ -1036,9 +1063,9 @@ function trChoiceText(result, step, previous, cell) {
     const fictitious = trIsFictitious(closed, step.row - 1, step.column - 1);
     let text;
     if (fictitious && result.fictitiousLast) {
-        text = 'Настоящие клетки закончились, остались фиктивные (стоимость 0)';
+        text = 'Настоящие клетки закончились, остались фиктивные (тариф 0)';
     } else {
-        text = 'Наименьшая стоимость из невычеркнутых - ' + trNumber(step.cost);
+        text = 'Наименьший тариф из невычеркнутых - ' + trNumber(step.cost);
     }
     if (step.candidates.length === 1) {
         return text + ', клетка <b>' + cell + '</b>.';

@@ -1376,7 +1376,7 @@ const TAB_STORAGE_KEY = 'multiflow.tab.v1';
 const TABS = {
     flow: {subtitle: 'Максимальные потоки между всеми парами вершин - дерево Гомори-Ху'},
     placement: {subtitle: 'Размещение производства - задача о назначениях, венгерский метод'},
-    transport: {subtitle: 'Транспортная задача - северо-западный угол и минимальная стоимость'}
+    transport: {subtitle: 'Транспортная задача - северо-западный угол и минимальный тариф'}
 };
 
 function selectTab(name, reason) {
