@@ -76,8 +76,8 @@ android {
         applicationId = 'ru.mashinka.multiflow'
         minSdk = 29          // Android 10
         targetSdk = 36
-        versionCode = 9
-        versionName = '1.5.1'
+        versionCode = 10
+        versionName = '1.5.2'
         buildConfigField 'String', 'SERVER_URL', "\"${serverUrl}\""
 
         // ML Kit кладёт модель распознавания в APK отдельно под каждую архитектуру процессора,

@@ -20,7 +20,7 @@
 
     <properties>
         <!-- версия сайта = версия APK (android/app/build.gradle, versionName); менять вместе -->
-        <site.version>1.5.1</site.version>
+        <site.version>1.5.2</site.version>
     </properties>
 
     <dependencyManagement>
