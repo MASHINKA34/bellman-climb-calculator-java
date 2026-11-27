@@ -21,14 +21,15 @@ class TransportSolverTest {
 
     // суммы по всем 27 вариантам контрольной, посчитаны отдельной программой на Python:
     // северо-западный угол; минимальная стоимость (фиктивные клетки в последнюю очередь);
-    // минимальная стоимость (фиктивные наравне с остальными); оптимум симплекс-методом (scipy, HiGHS)
+    // минимальная стоимость (фиктивные наравне с остальными); оптимум симплекс-методом (scipy, HiGHS).
+    // При равных тарифах - верхняя, затем левая клетка, как в примере методички
     private static final long[][] REFERENCE = {
             {5190, 3280, 3340, 2670}, {4240, 2870, 2990, 2410}, {5140, 2590, 2630, 2240},
-            {5120, 2760, 2920, 2420}, {5040, 3210, 3230, 2890}, {4940, 2540, 2570, 2190},
+            {5120, 2760, 2920, 2420}, {5040, 3210, 3230, 2890}, {4940, 2620, 2650, 2190},
             {4880, 3320, 3330, 2690}, {5280, 3300, 3360, 2780}, {5020, 2860, 2980, 2730},
             {4540, 3220, 3230, 2740}, {5080, 2590, 2890, 2510}, {5850, 2915, 2930, 2770},
-            {5210, 3190, 3190, 2940}, {4660, 2500, 2500, 2420}, {4740, 2920, 3020, 2790},
-            {3590, 2410, 2710, 2260}, {5090, 2630, 2880, 2480}, {4030, 3060, 3240, 2660},
+            {5210, 3190, 3190, 2940}, {4660, 2480, 2480, 2420}, {4740, 2920, 3020, 2790},
+            {3590, 2410, 2710, 2260}, {5090, 2720, 2945, 2480}, {4030, 3060, 3240, 2660},
             {4620, 3000, 3120, 2680}, {5490, 2690, 2910, 2620}, {4530, 2930, 2950, 2770},
             {3670, 3400, 3680, 2900}, {4030, 3060, 3240, 2660}, {4560, 3030, 3150, 2670},
             {5320, 2420, 2530, 2420}, {5180, 2890, 2950, 2890}, {4000, 3120, 3400, 2920},
@@ -144,23 +145,70 @@ class TransportSolverTest {
         assertEquals(80, solution.getOptimal().getCost());
     }
 
-    // из равных тарифов - клетка, куда помещается больше; при равенстве - верхняя, затем левая
+    // из равных тарифов - верхняя, затем левая клетка, даже если в другую влезло бы больше
     @Test
-    void tieGoesToTheLargestShipmentThenTopLeft() {
+    void tieGoesToTheTopLeftCell() {
         int[][] equal = {{4, 4}, {4, 4}};
         TransportPlan plan = solver.solve(TransportProblem.of(equal, new int[]{10, 50}, new int[]{20, 40}), true,
                 "tie").getMinimumCost();
         TransportStep first = plan.getSteps().get(0);
-        assertEquals(1, first.getRow());
-        assertEquals(1, first.getColumn());
-        assertEquals(40, first.getAmount());
+        assertEquals(0, first.getRow());
+        assertEquals(0, first.getColumn());
+        assertEquals(10, first.getAmount());
         assertEquals(4, first.getCandidates().length);
-        assertArrayEquals(new int[]{1, 1}, first.getCandidates()[0], "выбранная клетка - первая в списке");
+        assertArrayEquals(new int[]{0, 0}, first.getCandidates()[0], "выбранная клетка - первая в списке");
+        assertArrayEquals(new int[]{1, 1}, first.getCandidates()[3]);
+    }
 
-        TransportStep same = solver.solve(TransportProblem.of(equal, new int[]{30, 30}, new int[]{30, 30}), true,
-                "tie-top").getMinimumCost().getSteps().get(0);
-        assertEquals(0, same.getRow());
-        assertEquals(0, same.getColumn());
+    // пример методички «Сетевые модели исследования операций», табл. 6.3-6.5: запасы 850, потребности 860,
+    // фиктивный поставщик A5 с запасом 10. Планы совпадают с таблицами клетка в клетку
+    @Test
+    void manualExampleGivesTables64And65() {
+        TransportProblem problem = TransportProblem.of(new int[][]{
+                {10, 7, 4, 1, 4}, {2, 7, 10, 6, 11}, {8, 5, 3, 2, 2}, {11, 8, 12, 16, 13}},
+                new int[]{100, 250, 200, 300}, new int[]{200, 200, 100, 100, 260});
+        assertEquals(TransportProblem.Type.SHORTAGE, problem.type());
+        assertEquals(10, problem.fictitiousAmount());
+        TransportSolution solution = solver.solve(problem, true, "manual");
+
+        // табл. 6.4: Z_СЗУ = 6950
+        long[][] northWest = {
+                {100, 0, 0, 0, 0},
+                {100, 150, 0, 0, 0},
+                {0, 50, 100, 50, 0},
+                {0, 0, 0, 50, 250},
+                {0, 0, 0, 0, 10},
+        };
+        assertArrayEquals(northWest, solution.getNorthWest().getAmount());
+        assertEquals(6950, solution.getNorthWest().getCost());
+
+        // табл. 6.5: Z_МС = 4300, клетка (3, 4) фиктивно занята (перевозка 0)
+        long[][] minimum = {
+                {0, 0, 0, 100, 0},
+                {200, 50, 0, 0, 0},
+                {0, 0, 0, 0, 200},
+                {0, 150, 100, 0, 50},
+                {0, 0, 0, 0, 10},
+        };
+        TransportPlan plan = solution.getMinimumCost();
+        assertArrayEquals(minimum, plan.getAmount());
+        assertEquals(4300, plan.getCost());
+        assertTrue(plan.getFilled()[2][3], "клетка (3, 4) фиктивно занята");
+        assertEquals(1, plan.zeroCount());
+        // порядок шагов как в методичке, кроме фиктивной клетки (5, 5): там её берут первой
+        int[][] order = {{0, 3}, {1, 0}, {2, 3}, {2, 4}, {1, 1}, {3, 1}, {3, 2}, {3, 4}, {4, 4}};
+        for (int k = 0; k < order.length; k++) {
+            TransportStep step = plan.getSteps().get(k);
+            assertArrayEquals(order[k], new int[]{step.getRow(), step.getColumn()}, "шаг " + (k + 1));
+        }
+        assertEquals(TransportStep.Crossed.ROW, plan.getSteps().get(0).getCrossed(), "шаг 2-2: вычёркивается строка A1");
+
+        // нули фиктивной строки первыми: верхняя левая из них - (5, 1), а не (5, 5) методички, отсюда 4400;
+        // сумма методички есть в списке других возможных
+        TransportSolution first = solver.solve(problem, false, "manual-first");
+        assertEquals(4400, first.getMinimumCost().getCost());
+        assertTrue(first.getOtherCosts().contains(4300L));
+        assertEquals(4150, solution.getOptimal().getCost());
     }
 
     // запас и потребность кончаются вместе: вычёркивается строка, в столбец потом пишется базисный ноль
@@ -337,7 +385,7 @@ class TransportSolverTest {
         return node;
     }
 
-    // каждый шаг берёт наименьший тариф из невычеркнутых, а из равных - наибольшую перевозку
+    // каждый шаг берёт наименьший тариф из невычеркнутых, а из равных - верхнюю, затем левую клетку
     private static void assertCheapestEachTime(TransportSolution solution, String name) {
         Balanced table = solution.getBalanced();
         boolean[] rows = new boolean[table.rows()];
@@ -360,9 +408,9 @@ class TransportSolverTest {
                         continue;
                     }
                     assertTrue(table.cost(i, j) >= step.getCost(), name);
-                    if (table.cost(i, j) == step.getCost()) {
-                        assertTrue(Math.min(supply[i], demand[j]) <= step.getAmount(), name);
-                    }
+                    boolean earlier = i < step.getRow() || (i == step.getRow() && j < step.getColumn());
+                    assertFalse(table.cost(i, j) == step.getCost() && earlier, name + ": выше или левее есть клетка "
+                            + "с тем же тарифом");
                 }
             }
             supply = step.getSupplyAfter();
