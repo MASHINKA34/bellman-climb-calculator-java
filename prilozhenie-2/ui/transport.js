@@ -2,7 +2,8 @@
 
 /* ===========================================================================
    Вкладка «Транспортная» - математическая модель (открытая и закрытая) и начальный
-   план двумя методами: северо-западного угла и минимального тарифа. Для сверки с
+   план двумя методами: северо-западного угла и минимальной стоимости (минимального тарифа) - по методичке
+   «Сетевые модели исследования операций», глава 6. Для сверки с
    Excel - оптимальный план без шагов.
 
    Весь расчёт выполняет ядро на Java (пакет transport). В приложении его зовёт мост
@@ -117,9 +118,6 @@ function trConsumerName(closed, j) {
     return 'B' + (j + 1) + (closed && j === closed.fictitiousColumn - 1 ? 'ф' : '');
 }
 
-function trCellName(closed, row, column) {
-    return '(' + trSupplierName(closed, row - 1) + ',&nbsp;' + trConsumerName(closed, column - 1) + ')';
-}
 
 /* ============================ ввод ============================ */
 
@@ -715,7 +713,7 @@ function trRenderResult(result) {
     html.push('<nav class="chips" aria-label="Разделы результата">'
         + '<a href="#tr-sec-model" data-target="tr-sec-model">Модель</a>'
         + '<a href="#tr-sec-nw" data-target="tr-sec-nw">Северо-западный угол</a>'
-        + '<a href="#tr-sec-min" data-target="tr-sec-min">Минимальный тариф</a>'
+        + '<a href="#tr-sec-min" data-target="tr-sec-min">Минимальная стоимость</a>'
         + '<a href="#tr-sec-opt" data-target="tr-sec-opt">Оптимум</a>'
         + '</nav>');
     html.push(trModelCard(result));
@@ -728,43 +726,101 @@ function trRenderResult(result) {
 
 /* ------------------------------------------------ модель */
 
+// модель записывается как в методичке («Сетевые модели исследования операций», п. 6.2):
+// сначала в общем виде через Σ с номерами формул, потом та же система числами варианта
 function trModelCard(result) {
     const closed = result.closed;
     const supply = result.supply.map(trNumber).join(' + ');
     const demand = result.demand.map(trNumber).join(' + ');
     let html = '<section class="card" id="tr-sec-model"><h2>Математическая модель</h2><div class="card-body">'
         + '<h4 class="sub">Тип модели</h4>'
-        + '<p>Запасы: ' + supply + ' = <b>' + trNumber(result.totalSupply) + '</b>.<br>'
+        + '<p>Поставщиков <i>m</i> = ' + result.suppliers + ', потребителей <i>n</i> = ' + result.consumers + '.<br>'
+        + 'Запасы: ' + supply + ' = <b>' + trNumber(result.totalSupply) + '</b>.<br>'
         + 'Потребности: ' + demand + ' = <b>' + trNumber(result.totalDemand) + '</b>.</p>';
     if (result.type === 'closed') {
-        html += '<p class="result-line">Запасы равны потребностям - модель <b>закрытая</b>, фиктивные поставщик или '
-            + 'потребитель не нужны.</p>'
+        html += '<p class="result-line">Суммарные запасы равны суммарным потребностям - задача <b>закрытая</b>: '
+            + 'все грузы вывозятся, все потребности удовлетворяются.</p>'
             + '<h4 class="sub">Закрытая модель</h4>'
+            + trGeneralModel('eq', 'eq', 'm', 'n', true)
+            + '<p class="model-title">Числами:</p>'
             + trModel(result.costs, result.supply, result.demand, 'eq', 'eq');
         return html + '</div></section>';
     }
     const shortage = result.type === 'shortage';
-    html += '<p class="result-line">Запасы ' + (shortage ? 'меньше' : 'больше') + ' потребностей на '
-        + trNumber(closed.amount) + ' - модель <b>открытая</b>.</p>';
+    const variant = shortage ? 'II' : 'I';
+    html += '<p class="result-line">Суммарные запасы ' + (shortage ? 'меньше' : 'больше') + ' суммарных потребностей на '
+        + trNumber(closed.amount) + ' - задача <b>открытая</b>, случай (' + variant + '): '
+        + trSigma('i', 'm') + '<i>a<sub>i</sub></i> ' + (shortage ? '&lt;' : '&gt;') + ' '
+        + trSigma('j', 'n') + '<i>b<sub>j</sub></i>.</p>';
 
-    html += '<h4 class="sub">Открытая модель</h4>'
-        + trModel(result.costs, result.supply, result.demand, result.open.supplySign, result.open.demandSign)
+    html += '<h4 class="sub">Открытая модель (' + variant + ')</h4>'
+        + trGeneralModel(result.open.supplySign, result.open.demandSign, 'm', 'n', false)
         + '<p class="legend">' + (shortage
-            ? 'Запасы вывозятся полностью (=), потребности закрываются не полностью (≤).'
-            : 'Потребности закрываются полностью (=), запасы вывозятся не полностью (≤).') + '</p>';
+            ? 'Запасы вывозятся полностью (=), потребности удовлетворяются не полностью (≤).'
+            : 'Потребности удовлетворяются полностью (=), запасы вывозятся не полностью (≤).') + '</p>'
+        + '<p class="model-title">Числами:</p>'
+        + trModel(result.costs, result.supply, result.demand, result.open.supplySign, result.open.demandSign);
 
+    const fictitiousName = shortage
+        ? trSupplierName(closed, closed.fictitiousRow - 1)
+        : trConsumerName(closed, closed.fictitiousColumn - 1);
     html += '<h4 class="sub">Закрытая модель</h4>'
-        + '<p>' + (shortage
-            ? 'Добавляется фиктивный поставщик <b>' + trSupplierName(closed, closed.fictitiousRow - 1) + '</b> с запасом '
-            : 'Добавляется фиктивный потребитель <b>' + trConsumerName(closed, closed.fictitiousColumn - 1)
-                + '</b> с потребностью ')
-        + trNumber(closed.amount) + ', все его тарифы - нули.</p>'
+        + '<p>Открытая задача решается приведением к закрытой. Вводится фиктивный '
+        + (shortage ? 'поставщик <b>' + fictitiousName + '</b>' : 'потребитель <b>' + fictitiousName + '</b>')
+        + ', стоимость перевозки ' + (shortage ? 'от него' : 'до него') + ' равна нулю:</p>'
+        + '<div class="model">' + (shortage
+            ? '<p><i>a</i><sub><i>m</i>+1</sub> = ' + trSigma('j', 'n') + '<i>b<sub>j</sub></i> - ' + trSigma('i', 'm')
+                + '<i>a<sub>i</sub></i> = ' + trNumber(result.totalDemand) + ' - ' + trNumber(result.totalSupply) + ' = <b>'
+                + trNumber(closed.amount) + '</b>,</p><p><i>c</i><sub><i>m</i>+1,<i>j</i></sub> = 0, ' + trRange('j', 'n') + '.</p>'
+            : '<p><i>b</i><sub><i>n</i>+1</sub> = ' + trSigma('i', 'm') + '<i>a<sub>i</sub></i> - ' + trSigma('j', 'n')
+                + '<i>b<sub>j</sub></i> = ' + trNumber(result.totalSupply) + ' - ' + trNumber(result.totalDemand) + ' = <b>'
+                + trNumber(closed.amount) + '</b>,</p><p><i>c</i><sub><i>i</i>,<i>n</i>+1</sub> = 0, ' + trRange('i', 'm') + '.</p>')
+        + '</div>'
+        + '<p class="legend">Целевая функция не меняется: все слагаемые фиктивных перевозок равны нулю.</p>'
         + trClosedTable(closed)
+        + trGeneralModel('eq', 'eq', shortage ? 'm+1' : 'm', shortage ? 'n' : 'n+1', true)
+        + '<p class="model-title">Числами:</p>'
         + trModel(closed.costs, closed.supply, closed.demand, 'eq', 'eq');
     return html + '</div></section>';
 }
 
-// Z = 13x11 + 5x12 + ... -> min; ограничения по поставщикам и потребителям; x >= 0
+// знак суммы с пределами: Σ, снизу «i=1», сверху «m»
+function trSigma(index, upper) {
+    return '<span class="sigma"><span class="lim">' + trLimit(upper) + '</span><span class="op">Σ</span>'
+        + '<span class="lim"><i>' + index + '</i>=1</span></span>';
+}
+
+// «m+1» с буквой курсивом
+function trLimit(text) {
+    return text.replace(/[a-z]/g, function (letter) {
+        return '<i>' + letter + '</i>';
+    });
+}
+
+// «i = 1, m» с чертой сверху, как в методичке
+function trRange(index, upper) {
+    return '<i>' + index + '</i> = <span class="ovl">1, ' + trLimit(upper) + '</span>';
+}
+
+// модель в общем виде: (6.1)-(6.4) для закрытой задачи, (I) или (II) для открытой
+function trGeneralModel(supplySign, demandSign, m, n, numbered) {
+    const sign = {eq: '=', le: '≤'};
+    const tag = function (number) {
+        return numbered ? '<span class="eq-no">(6.' + number + ')</span>' : '';
+    };
+    return '<div class="model general">'
+        + '<p class="objective"><i>Z</i> = ' + trSigma('i', m) + trSigma('j', n) + '<i>c<sub>ij</sub>x<sub>ij</sub></i> → min,'
+        + tag(1) + '</p>'
+        + '<ul class="system">'
+        + '<li>' + trSigma('j', n) + '<i>x<sub>ij</sub></i> ' + sign[supplySign] + ' <i>a<sub>i</sub></i>,&nbsp;&nbsp; '
+        + trRange('i', m) + ',' + tag(2) + '</li>'
+        + '<li>' + trSigma('i', m) + '<i>x<sub>ij</sub></i> ' + sign[demandSign] + ' <i>b<sub>j</sub></i>,&nbsp;&nbsp; '
+        + trRange('j', n) + ',' + tag(3) + '</li>'
+        + '<li><i>x<sub>ij</sub></i> ≥ 0,&nbsp;&nbsp; ' + trRange('i', m) + ', ' + trRange('j', n) + '.' + tag(4) + '</li>'
+        + '</ul></div>';
+}
+
+// та же система числами: Z = 13x11 + 5x12 + ... -> min; ограничения по поставщикам и потребителям
 function trModel(costs, supply, demand, supplySign, demandSign) {
     const m = supply.length;
     const n = demand.length;
@@ -793,7 +849,8 @@ function trModel(costs, supply, demand, supplySign, demandSign) {
     return '<div class="model"><p class="objective"><i>Z</i> = ' + terms.join(' + ') + ' → min</p>'
         + '<p class="model-title">По запасам:</p><ul class="system">' + rows.join('') + '</ul>'
         + '<p class="model-title">По потребностям:</p><ul class="system">' + columns.join('') + '</ul>'
-        + '<p class="nonnegative"><i>x</i><sub>ij</sub> ≥ 0, <i>i</i> = 1..' + m + ', <i>j</i> = 1..' + n + '</p></div>';
+        + '<p class="nonnegative"><i>x</i><sub>ij</sub> ≥ 0, ' + trRange('i', String(m)) + ', '
+        + trRange('j', String(n)) + '</p></div>';
 }
 
 // таблица закрытой модели: тарифы, запасы, потребности
@@ -808,15 +865,24 @@ function trIsFictitious(closed, i, j) {
 }
 
 // общая таблица: cell(i, j) -> {text, cls}; right и bottom - остатки или запасы и потребности;
-// crossed - {rows, columns} вычеркнутых строк и столбцов
-function trTable(closed, cell, right, bottom, crossed, titles) {
+// crossed - {rows, columns} вычеркнутых строк и столбцов; rests - {rows, columns}: остатки по шагам,
+// как столбец «Остаток запасов» и строка «Остаток потребностей» в табл. 6.4 методички
+function trTable(closed, cell, right, bottom, crossed, titles, rests) {
     const n = bottom.length;
-    let html = '<div class="table-scroll"><table class="data tr-plan"><thead><tr><th class="corner"></th>';
+    const restList = function (items) {
+        return items.map(function (item) {
+            return '<span class="rest"><span class="step-no">' + trStepMark(item.step) + '</span>'
+                + trNumber(item.value) + '</span>';
+        }).join('');
+    };
+    let html = '<div class="table-scroll"><table class="data tr-plan' + (rests ? ' with-rests' : '')
+        + '"><thead><tr><th class="corner"></th>';
     for (let j = 0; j < n; j++) {
         const cls = (j === closed.fictitiousColumn - 1 ? 'fict' : '') + (crossed && crossed.columns[j] ? ' crossed' : '');
         html += '<th' + (cls ? ' class="' + cls.trim() + '"' : '') + '>' + trConsumerName(closed, j) + '</th>';
     }
-    html += '<th class="side">' + (titles ? titles.right : 'Запас') + '</th></tr></thead><tbody>';
+    html += '<th class="side">' + (titles ? titles.right : 'Запас') + '</th>'
+        + (rests ? '<th class="side rests" title="Остаток запасов">Оста&shy;ток</th>' : '') + '</tr></thead><tbody>';
     right.forEach(function (value, i) {
         const cls = (i === closed.fictitiousRow - 1 ? 'fict' : '') + (crossed && crossed.rows[i] ? ' crossed' : '');
         html += '<tr><th' + (cls ? ' class="' + cls.trim() + '"' : '') + '>' + trSupplierName(closed, i) + '</th>';
@@ -825,13 +891,22 @@ function trTable(closed, cell, right, bottom, crossed, titles) {
             const off = crossed && (crossed.rows[i] || crossed.columns[j]) ? ' off' : '';
             html += '<td class="' + ((content.cls || '') + off).trim() + '">' + content.text + '</td>';
         }
-        html += '<td class="side">' + trNumber(value) + '</td></tr>';
+        html += '<td class="side">' + trNumber(value) + '</td>'
+            + (rests ? '<td class="side rests">' + restList(rests.rows[i]) + '</td>' : '') + '</tr>';
     });
     html += '<tr><th class="side">' + (titles ? titles.bottom : 'Потр.') + '</th>';
     bottom.forEach(function (value) {
         html += '<td class="side">' + trNumber(value) + '</td>';
     });
-    return html + '<td class="side"></td></tr></tbody></table></div>';
+    html += '<td class="side"></td>' + (rests ? '<td class="side"></td>' : '') + '</tr>';
+    if (rests) {
+        html += '<tr><th class="side rests" title="Остаток потребностей">Оста&shy;ток</th>';
+        rests.columns.forEach(function (items) {
+            html += '<td class="side rests">' + restList(items) + '</td>';
+        });
+        html += '<td class="side"></td><td class="side"></td></tr>';
+    }
+    return html + '</tbody></table></div>';
 }
 
 /* ------------------------------------------------ планы */
@@ -858,6 +933,21 @@ function trStepOrder(plan) {
     return order;
 }
 
+// остатки запасов и потребностей после каждого шага, который их менял
+function trRests(result, plan) {
+    const rows = result.closed.supply.map(function () {
+        return [];
+    });
+    const columns = result.closed.demand.map(function () {
+        return [];
+    });
+    plan.steps.forEach(function (step) {
+        rows[step.row - 1].push({step: step.index, value: step.supplyAfter[step.row - 1]});
+        columns[step.column - 1].push({step: step.index, value: step.demandAfter[step.column - 1]});
+    });
+    return {rows: rows, columns: columns};
+}
+
 // клетка плана: номер шага и тариф мелко сверху, перевозка крупно
 function trPlanCell(closed, plan, i, j, order) {
     const filled = plan.filled[i][j];
@@ -871,33 +961,39 @@ function trPlanCell(closed, plan, i, j, order) {
 
 function trPlanTable(result, plan) {
     const order = trStepOrder(plan);
+    const withSteps = plan.steps.length > 0;
     let html = trTable(result.closed, function (i, j) {
         return trPlanCell(result.closed, plan, i, j, order);
-    }, result.closed.supply, result.closed.demand, null);
-    if (plan.steps.length) {
-        html += '<p class="legend">' + trStepMark(1) + ' ' + trStepMark(2) + ' ... - на каком шаге заполнена клетка.</p>';
+    }, result.closed.supply, result.closed.demand, null, null, withSteps ? trRests(result, plan) : null);
+    if (withSteps) {
+        html += '<p class="legend">«Остаток» справа - остаток запасов, снизу - остаток потребностей после шагов, '
+            + 'как в табл. 6.4 методички. ' + trStepMark(1) + ' ' + trStepMark(2) + ' ... - номер шага: на каком шаге '
+            + 'заполнена клетка и после какого шага остался такой остаток.</p>';
     }
     return html;
 }
 
-// Z = 13·50 + 5·50 + ... = 5190; базисные нули в сумму не пишутся
-function trTotalLine(result, plan) {
+// Z = 100·10 + 100·2 + ... = 6950, как в методичке: перевозка·стоимость по всем занятым клеткам,
+// и фиктивно занятые (0·2) тоже
+function trTotalLine(result, plan, label) {
     const parts = [];
     plan.amount.forEach(function (row, i) {
         row.forEach(function (value, j) {
-            if (value > 0) {
-                parts.push('<span class="term">' + trNumber(result.closed.costs[i][j]) + '·' + trNumber(value) + '</span>');
+            if (plan.filled[i][j]) {
+                parts.push('<span class="term">' + trNumber(value) + '·' + trNumber(result.closed.costs[i][j]) + '</span>');
             }
         });
     });
-    return '<p class="result-line total"><i>Z</i> = ' + parts.join(' + ') + ' = <b>' + trNumber(plan.cost) + '</b></p>';
+    return '<p class="result-line total"><i>Z</i>' + (label ? '<sub>' + label + '</sub>' : '') + ' = '
+        + parts.join(' + ') + ' = <b>' + trNumber(plan.cost) + '</b></p>';
 }
 
 function trFilledLine(plan) {
-    let text = '<p class="legend">Заполнено клеток: ' + plan.filledCount + ' = m + n - 1, план опорный.';
+    let text = '<p class="legend">Занятых клеток: ' + plan.filledCount + ' = m + n - 1, план опорный.';
     if (plan.zeroCount) {
-        text += ' Из них с перевозкой 0: ' + plan.zeroCount + ' - план вырожденный, базисный '
-            + plural(plan.zeroCount, 'ноль', 'нули', 'нули') + ' выделен' + (plan.zeroCount === 1 ? '' : 'ы') + ' рамкой.';
+        text += ' Из них ' + plural(plan.zeroCount, 'фиктивно занятая', 'фиктивно занятые', 'фиктивно занятых') + ' (перевозка 0): '
+            + plan.zeroCount + ' - план вырожденный, ' + (plan.zeroCount === 1 ? 'такая клетка выделена' : 'такие клетки выделены')
+            + ' рамкой.';
     }
     return text + '</p>';
 }
@@ -929,10 +1025,11 @@ function trFictitiousLine(result, plan) {
 function trNorthWestCard(result) {
     const plan = result.northWest;
     return '<section class="card" id="tr-sec-nw"><h2>Метод северо-западного угла</h2><div class="card-body">'
-        + '<p class="hint">Каждый раз заполняется левая верхняя из невычеркнутых клеток: в неё пишется наименьшее из '
-        + 'остатка запаса и остатка потребности. Исчерпанная строка или столбец вычёркивается.</p>'
+        + '<p class="hint">В левую верхнюю клетку оставшейся части таблицы помещается максимально возможная перевозка '
+        + 'γ - наименьшее из остатка запасов поставщика и остатка потребностей потребителя. Исчерпанная строка или '
+        + 'столбец вычёркивается (методичка, п. 6.3.1).</p>'
         + trPlanTable(result, plan)
-        + trTotalLine(result, plan)
+        + trTotalLine(result, plan, 'СЗУ')
         + trFilledLine(plan)
         + trFictitiousLine(result, plan)
         + trSteps(result, plan, 'nw')
@@ -941,23 +1038,25 @@ function trNorthWestCard(result) {
 
 function trMinimumCostCard(result) {
     const plan = result.minimumCost;
-    let rule = 'Каждый раз заполняется клетка с наименьшим тарифом из невычеркнутых. Если таких несколько - та, куда '
-        + 'помещается больше груза, из равных - верхняя, затем левая.';
+    let rule = 'Каждый раз в оставшейся части таблицы отыскивается клетка с минимальной стоимостью (тарифом) перевозки '
+        + 'и в неё помещается максимально возможная перевозка γ. Если таких клеток несколько, выбор произволен - '
+        + 'берётся верхняя, затем левая, как в примере методички (п. 6.3.2).';
     if (result.type !== 'closed') {
         rule += result.fictitiousLast
             ? ' Фиктивные клетки берутся в последнюю очередь.'
-            : ' Фиктивные клетки берутся по их тарифу 0, то есть первыми.';
+            : ' Фиктивные клетки берутся по их стоимости 0, то есть первыми.';
     }
-    let html = '<section class="card" id="tr-sec-min"><h2>Метод минимального тарифа</h2><div class="card-body">'
+    let html = '<section class="card" id="tr-sec-min"><h2>Метод минимальной стоимости (минимального тарифа)</h2>'
+        + '<div class="card-body">'
         + '<p class="hint">' + rule + '</p>'
         + trPlanTable(result, plan)
-        + trTotalLine(result, plan)
+        + trTotalLine(result, plan, 'МС')
         + trFilledLine(plan)
         + trFictitiousLine(result, plan);
     if (result.otherCosts.length) {
         const shown = result.otherCosts.slice(0, 30);
-        html += '<div class="message note">Были клетки с одинаковым тарифом. Если взять другую из них, тоже по правилам '
-            + 'метода выйдет <i>Z</i> = ' + shown.map(trNumber).join(', ')
+        html += '<div class="message note">Были клетки с одинаковой стоимостью. Если взять другую из них (в методичке '
+            + 'выбор произволен), тоже по правилам метода выйдет <i>Z</i> = ' + shown.map(trNumber).join(', ')
             + (shown.length < result.otherCosts.length || result.otherCostsTruncated ? ' и другие' : '') + '.</div>';
     }
     return html + trSteps(result, plan, 'min') + '</div></section>';
@@ -970,7 +1069,7 @@ function trOptimalCard(result) {
     };
     return '<section class="card" id="tr-sec-opt"><h2>Оптимальный план - для сверки с Excel</h2><div class="card-body">'
         + trPlanTable(result, plan)
-        + trTotalLine(result, plan)
+        + trTotalLine(result, plan, '')
         + trFictitiousLine(result, plan)
         + '<p>' + (result.optimalUnique
             ? 'Оптимальный план единственный: в Excel должны получиться те же перевозки.'
@@ -978,10 +1077,10 @@ function trOptimalCard(result) {
         + '</p>'
         + '<h4 class="sub">Сравнение</h4>'
         + '<div class="table-scroll"><table class="data answer"><thead><tr><th>План</th><th>Z</th><th></th></tr></thead><tbody>'
-        + '<tr><td>Северо-западный угол</td><td class="num">' + trNumber(result.northWest.cost) + '</td><td>'
-        + difference(result.northWest.cost) + '</td></tr>'
-        + '<tr><td>Минимальный тариф</td><td class="num">' + trNumber(result.minimumCost.cost) + '</td><td>'
-        + difference(result.minimumCost.cost) + '</td></tr>'
+        + '<tr><td>Северо-западный угол, <i>Z</i><sub>СЗУ</sub></td><td class="num">' + trNumber(result.northWest.cost)
+        + '</td><td>' + difference(result.northWest.cost) + '</td></tr>'
+        + '<tr><td>Минимальная стоимость, <i>Z</i><sub>МС</sub></td><td class="num">' + trNumber(result.minimumCost.cost)
+        + '</td><td>' + difference(result.minimumCost.cost) + '</td></tr>'
         + '<tr><td>Оптимальный</td><td class="num">' + trNumber(plan.cost) + '</td><td></td></tr>'
         + '</tbody></table></div></div></section>';
 }
@@ -1002,45 +1101,56 @@ function trSteps(result, plan, id) {
     return '<div class="tr-steps" id="tr-steps-' + id + '">' + html + '</div>';
 }
 
+// клетка, как в методичке: (2, 1) вместо (A2, B1)
+function trCellNumber(row, column) {
+    return '(' + row + ',&nbsp;' + column + ')';
+}
+
+// шаг словами методички: «Шаг 1-k» - перевозка в клетку, «Шаг 2-k» - что вычёркивается
 function trStep(result, step, previous, amounts, id) {
     const closed = result.closed;
     const row = step.row - 1;
     const column = step.column - 1;
     const supplyBefore = (previous ? previous.supplyAfter : closed.supply)[row];
     const demandBefore = (previous ? previous.demandAfter : closed.demand)[column];
-    const cell = trCellName(closed, step.row, step.column);
-    const supplier = trSupplierName(closed, row);
-    const consumer = trConsumerName(closed, column);
+    const cell = trCellNumber(step.row, step.column);
+    const supplier = 'A<sub>' + step.row + '</sub>';
+    const consumer = 'B<sub>' + step.column + '</sub>';
+    const k = step.index;
 
-    let html = '<details class="step" id="tr-step-' + id + '-' + step.index + '"><summary>'
-        + '<span class="step-title">Шаг ' + step.index + '</span> '
+    let html = '<details class="step" id="tr-step-' + id + '-' + k + '"><summary>'
+        + '<span class="step-title">Шаг ' + k + '</span> '
         + '<span class="step-pair">' + cell + '</span> '
         + '<span class="step-flow">' + trNumber(step.amount) + '</span></summary><div class="step-body">';
 
+    let place;
     if (id === 'min') {
-        html += '<p>' + trChoiceText(result, step, previous, cell) + '</p>';
+        place = trChoiceText(result, step, cell) + ' В неё помещается';
+    } else if (k === 1) {
+        place = 'В клетку <b>' + cell + '</b> - левую верхнюю клетку таблицы - помещается';
     } else {
-        html += '<p>Левая верхняя из невычеркнутых клеток - <b>' + cell + '</b>.</p>';
+        place = 'В клетку <b>' + cell + '</b> - левую верхнюю клетку оставшейся части таблицы - помещается';
     }
-    html += '<p><i>x</i><sub>' + step.row + (result.suppliers > 8 || result.consumers > 8 ? ',' : '') + step.column + '</sub> = min('
-        + trNumber(supplyBefore) + '; ' + trNumber(demandBefore) + ') = <b>' + trNumber(step.amount) + '</b>'
-        + (step.amount === 0 ? ' - базисный ноль' : '') + '.</p>';
+    html += '<p><b>Шаг 1-' + k + '.</b> ' + place + ' максимально возможная перевозка γ = min(' + trNumber(supplyBefore)
+        + ', ' + trNumber(demandBefore) + ') = <b>' + trNumber(step.amount) + '</b>'
+        + (step.amount === 0 ? ' (фиктивно занятая клетка)' : ' (минимум из запасов ' + trNumber(supplyBefore)
+            + ' поставщика ' + supplier + ' и потребностей ' + trNumber(demandBefore) + ' потребителя ' + consumer + ')')
+        + '. Остаток запасов поставщика ' + supplier + ' равен ' + trNumber(step.supplyAfter[row]) + ' ('
+        + trNumber(supplyBefore) + ' - ' + trNumber(step.amount) + '); остаток потребностей потребителя ' + consumer
+        + ' равен ' + trNumber(step.demandAfter[column]) + ' (' + trNumber(demandBefore) + ' - ' + trNumber(step.amount)
+        + ').</p>';
 
-    const supplyLeft = step.supplyAfter[row];
-    const demandLeft = step.demandAfter[column];
     if (step.crossed === 'both') {
-        html += '<p>Запасы и потребности исчерпаны - план построен.</p>';
+        html += '<p><b>Шаг 2-' + k + '.</b> Невычеркнутых строк и столбцов не осталось - план перевозок построен.</p>';
     } else if (step.degenerate) {
-        html += '<p>Одновременно исчерпаны запас ' + supplier + ' и потребность ' + consumer + '. Вычёркивается только '
-            + (step.crossed === 'row' ? 'строка ' + supplier + ', а в столбце ' + consumer : 'столбец ' + consumer
-                + ', а в строке ' + supplier) + ' остаётся 0: позже туда запишется перевозка 0, чтобы заполненных клеток '
-            + 'было m + n - 1.</p>';
-    } else if (step.crossed === 'row') {
-        html += '<p>Запас ' + supplier + ' исчерпан, строка вычёркивается. Потребности ' + consumer + ' осталось '
-            + trNumber(demandLeft) + '.</p>';
+        const kept = step.crossed === 'row' ? 'столбце ' + consumer : 'строке ' + supplier;
+        html += '<p><b>Шаг 2-' + k + '.</b> Запасы и потребности совпадают и равны γ: можно вычеркнуть как строку '
+            + supplier + ', так и столбец ' + consumer + ' (выбор произволен). Вычёркиваем '
+            + (step.crossed === 'row' ? 'строку ' + supplier : 'столбец ' + consumer) + '; в ' + kept
+            + ' остаётся 0 - позже туда попадёт перевозка 0 (фиктивно занятая клетка).</p>';
     } else {
-        html += '<p>Потребность ' + consumer + ' закрыта, столбец вычёркивается. Запаса ' + supplier + ' осталось '
-            + trNumber(supplyLeft) + '.</p>';
+        html += '<p><b>Шаг 2-' + k + '.</b> Из таблицы вычёркивается '
+            + (step.crossed === 'row' ? 'строка ' + supplier : 'столбец ' + consumer) + '.</p>';
     }
 
     html += trTable(closed, function (i, j) {
@@ -1057,34 +1167,24 @@ function trStep(result, step, previous, amounts, id) {
     return html + '</div></details>';
 }
 
-// почему на этом шаге взята именно эта клетка
-function trChoiceText(result, step, previous, cell) {
+// почему на этом шаге взята именно эта клетка (метод минимальной стоимости)
+function trChoiceText(result, step, cell) {
     const closed = result.closed;
     const fictitious = trIsFictitious(closed, step.row - 1, step.column - 1);
-    let text;
     if (fictitious && result.fictitiousLast) {
-        text = 'Настоящие клетки закончились, остались фиктивные (тариф 0)';
-    } else {
-        text = 'Наименьший тариф из невычеркнутых - ' + trNumber(step.cost);
+        const lead = 'Настоящих клеток не осталось, остались фиктивные (стоимость 0)';
+        return lead + (step.candidates.length === 1 ? ': клетка <b>' + cell + '</b>.'
+            : '; берём верхнюю левую - <b>' + cell + '</b>.');
     }
     if (step.candidates.length === 1) {
-        return text + ', клетка <b>' + cell + '</b>.';
+        return 'Клетка с минимальной стоимостью в оставшейся части таблицы - <b>' + cell + '</b>: <i>c</i><sub>'
+            + step.row + step.column + '</sub> = ' + trNumber(step.cost) + '.';
     }
-    const supply = previous ? previous.supplyAfter : closed.supply;
-    const demand = previous ? previous.demandAfter : closed.demand;
-    // по порядку: сверху вниз, слева направо; в скобках - сколько груза поместится
-    const list = step.candidates.slice().sort(function (a, b) {
-        return a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1];
-    }).map(function (candidate) {
-        return trCellName(closed, candidate[0], candidate[1]) + ' - '
-            + trNumber(Math.min(supply[candidate[0] - 1], demand[candidate[1] - 1]));
+    const list = step.candidates.map(function (candidate) {
+        return trCellNumber(candidate[0], candidate[1]);
     });
-    const same = step.candidates.filter(function (candidate) {
-        return Math.min(supply[candidate[0] - 1], demand[candidate[1] - 1]) === step.amount;
-    }).length;
-    return text + '. Таких клеток ' + step.candidates.length + ' (сколько груза поместится): ' + list.join(', ')
-        + '. Берётся <b>' + cell + '</b>: '
-        + (same > 1 ? 'груза поместится больше всего, из равных она верхняя левая.' : 'туда поместится больше всего.');
+    return 'Минимальная стоимость в клетках оставшейся части таблицы равна ' + trNumber(step.cost) + ' (клетки '
+        + list.join(', ') + '). Выбор произволен - берём верхнюю левую, <b>' + cell + '</b>.';
 }
 
 /* ============================ события результата ============================ */

@@ -1155,6 +1155,79 @@ table.tr-plan td.off:not(.filled) {
     background: repeating-linear-gradient(135deg, transparent 0 5px, var(--border-soft) 5px 6px);
 }
 
+/* модель в общем виде: знак суммы с пределами сверху и снизу, номера формул справа */
+.model.general p,
+.model.general li {
+    line-height: 2.4;
+}
+
+.sigma {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 2px;
+    vertical-align: middle;
+    line-height: 1;
+}
+
+.sigma .op {
+    font-size: 1.45em;
+}
+
+.sigma .lim {
+    font-size: 0.7em;
+}
+
+.ovl {
+    text-decoration: overline;
+}
+
+.eq-no {
+    float: right;
+    margin-left: 10px;
+    color: var(--text-dim);
+}
+
+/* остатки после шагов: столбец «Остаток запасов» и строка «Остаток потребностей», как в табл. 6.4 */
+table.tr-plan th.rests {
+    font-size: 10.5px;
+    line-height: 1.2;
+}
+
+/* таблица со столбцом остатков на одну колонку шире - ужимаем клетки, чтобы 6 столбцов с фиктивным
+   помещались на экран 360 dp */
+table.tr-plan.with-rests th,
+table.tr-plan.with-rests td {
+    min-width: 29px;
+    padding-left: 1px;
+    padding-right: 1px;
+}
+
+table.tr-plan.with-rests td.rests {
+    font-size: 11.5px;
+}
+
+table.tr-plan.with-rests .rest .step-no {
+    margin-right: 1px;
+    font-size: 9.5px;
+}
+
+table.tr-plan td.rests {
+    vertical-align: top;
+    font-weight: 500;
+}
+
+table.tr-plan .rest {
+    display: block;
+    white-space: nowrap;
+}
+
+table.tr-plan .rest .step-no {
+    margin-right: 2px;
+    color: var(--text-faint);
+    font-size: 10.5px;
+}
+
 #tab-transport .step-body {
     padding: 0 8px 10px;
 }

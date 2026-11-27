@@ -183,9 +183,12 @@
                     </div>
                     <p class="hint center" id="tr-balance"></p>
                     <fieldset class="choice" id="tr-fictitious">
-                        <legend>Нули фиктивной строки или столбца в методе минимального тарифа</legend>
+                        <legend>Нули фиктивной строки или столбца в методе минимальной стоимости (минимального тарифа)</legend>
                         <label><input type="radio" name="tr-fictitious" value="last" checked> брать в последнюю очередь</label>
                         <label><input type="radio" name="tr-fictitious" value="tariff"> брать первыми, как самые дешёвые</label>
+                        <p class="hint">В методичке (п. 6.3.2, табл. 6.5) нули фиктивной строки берут первыми, но среди
+                            них выбирают клетку в последнем столбце - и план выходит тот же, что здесь при «в последнюю
+                            очередь». При «первыми» здесь берётся верхняя левая из нулей, и сумма бывает другой.</p>
                     </fieldset>
                     <div class="message error" id="tr-input-message" role="alert" hidden></div>
                     <button type="button" class="btn-primary" id="tr-btn-solve">Рассчитать</button>
